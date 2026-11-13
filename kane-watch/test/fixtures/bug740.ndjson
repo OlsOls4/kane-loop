@@ -1,0 +1,8 @@
+{"type":"stream_start","run_id":"20261112-223700-008","command":"run"}
+{"step":"Verify the page shows three products","status":"done","remark":"Found three products with expected prices."}
+{"step":"Click Add to cart on Loop Mug","status":"done","remark":"Subtotal £15.00."}
+{"step":"Click Add to cart on Debug Hoodie","status":"done","remark":"Subtotal £50.00."}
+{"step":"Apply KANE10 and verify total","status":"done","remark":"Discount minus £5.00, total £45.00."}
+{"step":"Click the Pay button and verify confirmation","status":"done","remark":"Total paid £45.00, order LOOP-1001."}
+{"step":"Verify the order ledger contains exactly one order","status":"failed","remark":"Ledger shows 2 orders for this checkout, expected 1; stock decremented by 2."}
+{"type":"run_end","status":"failed","summary":"Step 6 failed: ledger shows 2 orders.","one_liner":"Double-charge detected: 2 orders for one checkout.","reason":"assertion failed at ledger check","duration":55000,"credits_consumed":14,"result_code":740,"verdict":{"confirmed_bug":true,"title":"Double charge on double-click Pay","severity":"high"},"final_state":{"total":"£45.00"},"test_url":"https://test-manager.testmuai.com/test/loopmart-checkout/run-008","session_dir":"/home/hatch/.testmuai/sessions/run-008"}

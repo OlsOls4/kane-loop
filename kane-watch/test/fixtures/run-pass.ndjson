@@ -1,0 +1,8 @@
+{"type":"stream_start","run_id":"20261112-223000-001","command":"run"}
+{"step":"Verify the page shows three products","status":"done","remark":"Found Loop Mug £15.00, Debug Hoodie £35.00, Kane Notebook £10.00; cart empty."}
+{"step":"Click Add to cart on Loop Mug","status":"done","remark":"Cart shows 1 Loop Mug, subtotal £15.00."}
+{"step":"Click Add to cart on Debug Hoodie","status":"done","remark":"Subtotal £50.00."}
+{"step":"Apply KANE10 and verify total","status":"done","remark":"Discount minus £5.00, total £45.00."}
+{"step":"Click the Pay button and verify confirmation","status":"done","remark":"Confirmation shows Total paid £45.00, order LOOP-1001."}
+{"step":"Verify the order ledger contains exactly one order","status":"done","remark":"Ledger has exactly one order; stock Mug 9, Hoodie 9."}
+{"type":"run_end","status":"passed","summary":"All 6 steps passed.","one_liner":"Checkout flow passed: total £45.00, one ledger order.","reason":null,"duration":42000,"credits_consumed":12,"final_state":{"total":"£45.00"},"test_url":"https://test-manager.testmuai.com/test/loopmart-checkout/run-001","session_dir":"/home/hatch/.testmuai/sessions/run-001"}

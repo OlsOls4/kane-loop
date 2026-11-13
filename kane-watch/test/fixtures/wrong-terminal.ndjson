@@ -1,0 +1,8 @@
+{"type":"stream_start","run_id":"20261112-223600-007","command":"run"}
+{"step":"Verify the page shows three products","status":"done","remark":"Found three products with expected prices."}
+{"step":"Click Add to cart on Loop Mug","status":"done","remark":"Subtotal £15.00."}
+{"step":"Click Add to cart on Debug Hoodie","status":"done","remark":"Subtotal £50.00."}
+{"step":"Apply KANE10 and verify total","status":"done","remark":"Discount minus £5.00, total £45.00."}
+{"step":"Click the Pay button and verify confirmation","status":"done","remark":"Total paid £45.00, order LOOP-1001."}
+{"step":"Verify the order ledger contains exactly one order","status":"done","remark":"Ledger has exactly one order."}
+{"type":"test_md_done","overall_status":"passed","duration_s":20,"session_id":"testmd-007","share_url":"https://test-manager.testmuai.com/test/loopmart-checkout/testmd-007"}

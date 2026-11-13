@@ -1,0 +1,3 @@
+{"type":"stream_start","run_id":"20261112-223200-003","command":"run"}
+{"step":"Verify the page shows three products","status":"done","remark":"Found three products with expected prices."}
+{"step":"Click Add to cart on Loop Mug","status":"running","remark":"Waiting for the Add to cart button to become clickable.

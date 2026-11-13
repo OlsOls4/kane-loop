@@ -1,0 +1,4 @@
+{"type":"stream_start","run_id":"20261112-223500-006","command":"run"}
+{"step":"Verify the page shows three products","status":"done","remark":"Found three products with expected prices."}
+{"step":"Click Add to cart on Loop Mug","status":"done","remark":"Subtotal £15.00."}
+{"step":"Click Add to cart on Debug Hoodie","status":"done","remark":"Subtotal £50.00."}
