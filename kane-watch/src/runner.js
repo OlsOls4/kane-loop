@@ -18,7 +18,7 @@ const { parseNdjson } = require('./parse-ndjson.js');
 
 const DEBOUNCE_MS = 2000;      // 2s quiet period (trailing edge)
 const STARVATION_MS = 10000;   // force a run after 10s of continuous saves
-const RUN_TIMEOUT_MS = 120000; // --timeout 120 per run
+const RUN_TIMEOUT_MS = 120000; // default spawn kill-switch; runLiveGate passes 300000 for replay/sweep (measured runs take ~180 s)
 
 function preflight(callback) {
   execFile('kane-cli', ['whoami'], { timeout: 15000 }, (err, stdout) => {

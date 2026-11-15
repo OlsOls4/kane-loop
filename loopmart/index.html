@@ -111,9 +111,6 @@
   <p class="muted">No money moved — this is a test payment</p>
   <p><button id="new-order">Start new order</button>
      <button id="view-run">Seeded bug controls</button></p>
-  <p id="g1-note" class="muted">Known defect G1 — Kane's next catch: “Start new order” wipes the
-  ledger (spec §3.4 — every completed order stays visible). Left in deliberately so Kane has a
-  real bug to catch; the loop's fixer has a one-line strategy for it.</p>
 </div>
 
 <h2>Order ledger</h2>
@@ -137,6 +134,10 @@
   double-click Pay during Processing) and resets the store. “Reset” restores correct behaviour
   (one charge per checkout) and resets the store. Mode can also be set with
   <code>?mode=buggy</code> or <code>?mode=fixed</code>.</p>
+  <p id="g1-note" class="muted">G1 fixed 15 Nov — “Start new order” used to wipe the ledger (spec §3.4 —
+  every completed order stays visible). The ledger now persists across orders; order numbers keep
+  incrementing. The fix is the loop fixer's <code>g1-ledger-preserve</code> strategy (2 lines in
+  cart.js).</p>
 </div>
 </main>
 

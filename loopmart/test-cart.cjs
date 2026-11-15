@@ -78,13 +78,35 @@ check('fixed mode: one Pay = one order, stock −1 each, A1–A5 all pass', () =
   assert.deepEqual(a, { A1: true, A2: true, A3: true, A4: true, A5: true });
 });
 
-check('REGRESSION (live Kane O2, 15 Nov): buggy mode double-click Pay = 1 order, stock −1 each, A1–A5 pass', () => {
+check('buggy mode: double-click Pay during Processing = 2 orders (seeded double-charge, re-armed 15 Nov)', () => {
   const s = coreCart('buggy');
   LM.applyDiscount(s, 'KANE10');
   const exp = LM.snapshotCheckout(s);
   const first = LM.pay(s); // first click charges once
   assert.equal(first.charged, true);
-  const second = LM.pay(s); // double-click while processing: idempotency guard holds
+  const second = LM.pay(s); // double-click while processing: seeded bug charges again
+  assert.equal(second.charged, true);
+  assert.equal(second.duplicate, true);
+  assert.equal(second.order.id, 'LOOP-1002');
+  assert.equal(s.orders.length, 2);
+  assert.deepEqual(s.orders.map((o) => o.id), ['LOOP-1001', 'LOOP-1002']);
+  assert.equal(s.stock.mug, 8);
+  assert.equal(s.stock.hoodie, 8);
+  assert.equal(s.confirmation.id, 'LOOP-1002');
+  assert.equal(LM.totalPence(s), 4500);
+  const a = LM.assertions(s, exp);
+  // A1–A3 still hold (totals agree); A4/A5 fail — two ledger rows for
+  // one checkout, exactly the seeded bug the O2 sweep caught live.
+  assert.deepEqual(a, { A1: true, A2: true, A3: true, A4: false, A5: false });
+});
+
+check('fixed mode: double-click Pay during Processing = 1 order (idempotency guard holds)', () => {
+  const s = coreCart('fixed');
+  LM.applyDiscount(s, 'KANE10');
+  const exp = LM.snapshotCheckout(s);
+  const first = LM.pay(s);
+  assert.equal(first.charged, true);
+  const second = LM.pay(s);
   assert.equal(second.charged, false);
   assert.equal(second.duplicate, true);
   assert.equal(second.order.id, 'LOOP-1001');
@@ -98,15 +120,15 @@ check('REGRESSION (live Kane O2, 15 Nov): buggy mode double-click Pay = 1 order,
   assert.deepEqual(a, { A1: true, A2: true, A3: true, A4: true, A5: true });
 });
 
-check('buggy mode: retry after a confirmation is ignored (idempotency guard)', () => {
+check('buggy mode: retry after a confirmation charges AGAIN (seeded double-charge)', () => {
   const s = coreCart('buggy');
   LM.applyDiscount(s, 'KANE10');
   LM.pay(s);
   const r = LM.pay(s);
-  assert.equal(r.charged, false);
+  assert.equal(r.charged, true);
   assert.equal(r.duplicate, true);
-  assert.equal(s.orders.length, 1);
-  assert.equal(s.stock.mug, 9);
+  assert.equal(s.orders.length, 2);
+  assert.equal(s.stock.mug, 8);
 });
 
 check('fixed mode: double-click and retry are ignored, still one order', () => {
@@ -121,11 +143,12 @@ check('fixed mode: double-click and retry are ignored, still one order', () => {
   assert.equal(s.stock.mug, 9);
 });
 
-check('reset restores seeded state (empty cart, stock 10) but order numbers keep incrementing', () => {
+check('reset restores seeded state (empty cart, stock 10) but order numbers keep incrementing — and the ledger persists (G1 fixed 15 Nov)', () => {
   const s = coreCart('buggy');
   LM.pay(s);
   LM.reset(s);
-  assert.equal(s.orders.length, 0);
+  assert.equal(s.orders.length, 1, 'G1 fix: the completed order survives "Start new order" (spec §3.4)');
+  assert.equal(s.orders[0].id, 'LOOP-1001');
   assert.equal(s.confirmation, null);
   assert.equal(s.stock.mug, 10);
   assert.equal(s.nextOrderNo, 1002, 'order numbers never repeat within a session');

@@ -45,6 +45,10 @@ function freshRoot() {
   execSync('mkdir -p ' + path.join(dir, 'tests', 'objectives'));
   execSync('cp ' + path.join(ROOT, 'tests', 'objectives', 'loopmart-checkout.objective.md') + ' ' + path.join(dir, 'tests', 'objectives', 'loopmart-checkout.objective.md'));
   execSync('cp ' + path.join(ROOT, 'tests', 'objectives', 'loopmart-chaos-sweep.objective.md') + ' ' + path.join(dir, 'tests', 'objectives', 'loopmart-chaos-sweep.objective.md'));
+  // The _test.md the replay actually executes (Wave 4 fix): runLiveGate
+  // hashes it as the fallback testFileHash, so the temp root needs it.
+  execSync('mkdir -p ' + path.join(dir, '.testmuai', 'tests'));
+  execSync('cp ' + path.join(ROOT, '.testmuai', 'tests', 'loopmart-o1-core-6_test.md') + ' ' + path.join(dir, '.testmuai', 'tests', 'loopmart-o1-core-6_test.md'));
   return dir;
 }
 
@@ -60,6 +64,12 @@ function greenSweep(runId) {
 
 function mockPreflight(cb) {
   cb({ signedIn: true, whoami: 'mock-user (test)' });
+}
+
+// Mocked live checks (Wave 4 fix): the real ones shell out to
+// `kane-cli balance` and curl — never run in a unit test.
+function mockLiveChecksOk(o, cb) {
+  cb({ ok: true, balance: 9723, reason: 'mocked live checks OK' });
 }
 
 // Scripted Kane: first two testmd replays are the seeded red, the third
@@ -94,7 +104,7 @@ check('buildKaneArgs sweep branch builds the O2 kane-run command from the object
   assert.ok(/chaos/i.test(args[1]), 'the objective is the chaos sweep, not O1');
   assert.ok(args.includes('--agent') && args.includes('--headless'));
   assert.ok(args.includes('--bug-detection') && args.includes('continue'));
-  assert.ok(args.includes('--timeout') && args.includes('120'));
+  assert.ok(args.includes('--timeout') && args.includes('300'), 'the sweep timeout is 300 s — the measured O2 sweep took 180.5 s, over the old 120 s cap');
   assert.ok(args.includes('--url') && args.includes('http://localhost:8080'));
   // No --no-adaptive-heal on a fresh kane run (that flag is testmd-only).
   assert.ok(!args.includes('--no-adaptive-heal'));
@@ -108,14 +118,15 @@ check('live loop closes with mocked spawnKane: red -> replay -> fixer -> replay 
   let result = null;
   runLiveGate({
     gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
-    preflight: mockPreflight, spawnKane: scriptedSpawnKane(calls),
+    preflight: mockPreflight, liveChecks: mockLiveChecksOk,
+    spawnKane: scriptedSpawnKane(calls),
   }, (r) => { result = r; });
   assert.ok(result, 'done() must be called');
   assert.equal(result.state, 'LOOP_VERIFIED', 'live loop must reach LOOP_VERIFIED');
   assert.equal(result.capped, undefined, 'must not hit the spawn cap');
   assert.equal(calls.length, 4, 'exactly 4 Kane spawns: 3 testmd replays + 1 sweep run');
   assert.deepEqual(calls.map((c) => c[0]), ['testmd', 'testmd', 'testmd', 'run']);
-  assert.deepEqual(calls[2].slice(0, 4), ['testmd', 'run', 'tests/loopmart-checkout_test.md', '--agent']);
+  assert.deepEqual(calls[2].slice(0, 4), ['testmd', 'run', '.testmuai/tests/loopmart-o1-core-6_test.md', '--agent'], 'the replay replays the committed _test.md (Wave 4 fix: tests/loopmart-checkout_test.md never existed)');
   assert.ok(calls[2].includes('--no-adaptive-heal'), 'the confirm replay keeps --no-adaptive-heal');
   assert.ok(calls[3].includes('--bug-detection') && calls[3].includes('continue'), 'the sweep is a kane run with bug detection');
 
@@ -153,7 +164,8 @@ check('live loop with sweepMode local: LOCAL-SWEEP closes the loop and is never 
   let result = null;
   runLiveGate({
     gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
-    preflight: mockPreflight, spawnKane: scriptedSpawnKane(calls), sweepMode: 'local',
+    preflight: mockPreflight, liveChecks: mockLiveChecksOk,
+    spawnKane: scriptedSpawnKane(calls), sweepMode: 'local',
   }, (r) => { result = r; });
   assert.equal(result.state, 'LOOP_VERIFIED');
   assert.equal(calls.length, 3, 'no Kane sweep spawn in local mode — only the 3 testmd replays');
@@ -177,6 +189,7 @@ check('live loop refuses fast when preflight says not signed in (no Kane spawn)'
   runLiveGate({
     gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
     preflight: (cb) => cb({ signedIn: false, whoami: 'Not logged in' }),
+    liveChecks: mockLiveChecksOk,
     spawnKane: scriptedSpawnKane(calls),
   }, (r) => { result = r; });
   assert.equal(result.state, 'PROVISIONAL_DONE');
@@ -187,6 +200,30 @@ check('live loop refuses fast when preflight says not signed in (no Kane spawn)'
   assert.equal(lines[0].classifier, 'DIDNT_START');
   assert.equal(lines[0].decision, 'setup');
   assert.equal(lines[0].exit_code, 2);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+check('live loop refuses fast when live checks fail (signed in, credit guard refuses — no Kane spawn)', () => {
+  const dir = freshRoot();
+  const journal = path.join(dir, 'journal.jsonl');
+  const gate = createGate({ objectiveHash: 'o1-loopmart-checkout', testFileHash: null });
+  const calls = [];
+  let result = null;
+  runLiveGate({
+    gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
+    preflight: mockPreflight,
+    liveChecks: (o, cb) => cb({ ok: false, balance: 100, reason: 'credit guard refused: projected cost 100 exceeds balance 100 minus reserve 250' }),
+    spawnKane: scriptedSpawnKane(calls),
+  }, (r) => { result = r; });
+  assert.equal(result.state, 'PROVISIONAL_DONE');
+  assert.equal(result.started, false);
+  assert.equal(calls.length, 0, 'no Kane spawn when the credit guard refuses');
+  const lines = fs.readFileSync(journal, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].classifier, 'DIDNT_START');
+  assert.equal(lines[0].decision, 'setup');
+  assert.equal(lines[0].exit_code, 2);
+  assert.ok(/credit guard/.test(lines[0].notes), 'the refusal reason is in the journal');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

@@ -15,8 +15,11 @@
  * section is hidden once a confirmation shows) and is ignored by the
  * handler. The canonical trigger is double-click during Processing.
  *
- * Genuine defect G1 (retained, disclosed — see README Known issues):
- * "Start new order" wipes the ledger, so completed orders are lost.
+ * Genuine defect G1 — FIXED 15 Nov (Wave 4 fix batch): "Start new order"
+ * used to wipe the ledger, so completed orders were lost. The ledger now
+ * persists across orders (cart.js reset() preserves state.orders, the
+ * fixer's tested g1-ledger-preserve strategy); the note moved from
+ * #confirmation to the seeded box below.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -26,7 +29,9 @@
 
   function getModeFromQuery(search) {
     const m = /[?&]mode=(buggy|fixed)/.exec(search || '');
-    return m ? m[1] : 'buggy'; // Day 2 build ships with the seeded bug armed.
+    // Default ships FIXED (15 Nov): the submitted site must work end to
+    // end. The seeded bug is armed only on demand — ?mode=buggy or Break it.
+    return m ? m[1] : 'fixed';
   }
 
   function initLoopMart(doc, opts) {
@@ -115,11 +120,12 @@
       payBtn.textContent = state.processing
         ? 'Processing\u2026'
         : 'Pay ' + money(LM.totalPence(state)) + ' \u2014 test, no money moves';
-      // The button is disabled while processing in both modes
-      // (single-flight guard) — the seeded bug's window is closed; the
-      // mode flag now only toggles the status text. Empty cart: Pay is
-      // disabled with the reason in text, not a silent no-op.
-      payBtn.disabled = state.processing || lines.length === 0;
+      // In fixed mode the button is disabled while processing (no second
+      // click possible); in buggy mode it stays enabled — that is the
+      // seeded bug's window. Empty cart: Pay is disabled with the reason
+      // in text, not a silent no-op.
+      payBtn.disabled = (state.processing && state.mode === 'fixed')
+        || lines.length === 0;
       el('pay-status').textContent = lines.length === 0
         ? 'Cart is empty — add a product first.'
         : '';
@@ -214,8 +220,8 @@
 
     function renderBugBox() {
       el('bug-status').textContent = state.mode === 'buggy'
-        ? 'Seeded bug ARMED — guard active: double-click Pay proves one charge.'
-        : 'Seeded bug OFF: one charge per checkout (correct behaviour).';
+        ? 'Seeded bug ARMED: double-charge on double-click Pay during Processing.'
+        : 'Seeded bug OFF — guard active: one charge per checkout (correct behaviour).';
     }
 
     function render() {
@@ -241,7 +247,10 @@
         return;
       }
       if (state.processing) {
-        // Idempotency guard: ignore clicks while a payment is in flight.
+        // Second click while the first payment is in flight.
+        // Buggy mode: queue a second charge (the seeded double-charge).
+        // Fixed mode: ignore.
+        if (state.mode === 'buggy') state.pendingCharges += 1;
         render();
         return;
       }

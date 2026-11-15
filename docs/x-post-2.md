@@ -11,7 +11,7 @@ Mid-week progress post (Mon 17 Nov). Two posts — the single-post draft was
 
 The loop closed live: O1 passed (100), O2 caught the seeded double-charge (740 — 2 orders), fix landed, O2 green on retry (100, 1 order).
 
-2/2 — 97 tests passing. Console live: https://kane-loop-loopmart.vercel.app/
+2/2 — 99 tests passing. Console live: https://kane-loop-loopmart.vercel.app/
 
 LoopMart is the victim: double-click Pay, two orders in the ledger, total still £45. The checkout looks done while the money is wrong underneath.
 

@@ -39,6 +39,13 @@
   #timeline { display: flex; flex-direction: column; gap: 8px; counter-reset: tl; }
   .timeline-row { display: flex; align-items: center; gap: 12px; counter-increment: tl; text-align: left; width: 100%; font-size: 14px; font-weight: 600; padding: 10px 14px; background: #2a3a52; border: 1px solid #3b4a63; color: #e2e8f0; border-radius: 12px; }
   .timeline-row::before { content: counter(tl); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #0d9488; color: #fff; font-size: 14px; font-weight: 800; }
+  /* Pass/fail differentiation (Wave 4 fix): the number badge turns green
+     on a pass and red on a fail, so a failed latest run never reads as
+     the headline — every row carries its own badge. */
+  .timeline-row.pass { border-left: 4px solid #16a34a; }
+  .timeline-row.pass::before { background: #16a34a; }
+  .timeline-row.fail { border-left: 4px solid #dc2626; }
+  .timeline-row.fail::before { background: #dc2626; }
   .timeline-row[aria-pressed="true"] { border: 2px solid #ff6b4a; background: #ff6b4a; color: #fff; }
   .timeline-row[aria-pressed="true"]::before { background: #fff; color: #f04e30; }
   details#ndjson { margin-top: 16px; border: 1px solid #3b4a63; border-radius: 14px; padding: 12px 14px; background: #2a3a52; }
@@ -63,16 +70,16 @@
 </header>
 
 <div id="strip" aria-live="polite">GREEN (substance): fresh O1 + independent O2 pass (result_code 100).
-  <span class="sub">Replay leg unproven — Kane analyzer fault (3 attempts). Live runs below.</span>
+  <span class="sub">Replay leg unproven — Kane analyzer fault (4 attempts). Live runs below.</span>
 </div>
 
 <div class="toolbar">
   <button class="primary" id="break-it-console" disabled>Break it — apply the double-charge bug</button>
   <button id="replay-last" disabled>Replay last failure — local reproduction, no Kane run</button>
-  <span id="credits-line">476.53 credits spent 15 Nov (10,200 → 9,723.47 balance).</span>
+  <span id="credits-line">479.24 credits spent 15 Nov (10,200 → 9,720.76 balance). run_end sum 353.36 — see the credits note for the reconciliation.</span>
 </div>
 
-<div id="example-banner">LIVE — 10 completed Kane CLI runs, 15 Nov 2026. Latest: O2 sweep green (result_code 100). Replay leg unproven — Kane analyzer fault, not an app defect.</div>
+<div id="example-banner">LIVE — 11 completed Kane CLI runs, 15 Nov 2026. Latest: live-gate replay failed (Kane analyzer, step 18) — 4th replay failure. Overall GREEN in substance (fresh O1 + independent O2 pass); replay leg unproven.</div>
 
 <div class="columns">
   <section class="checkout" aria-label="LoopMart checkout">
@@ -87,7 +94,7 @@
     <div id="timeline"></div>
     <details id="ndjson">
       <summary>Raw NDJSON and logs</summary>
-      <p class="muted" id="ndjson-label">LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full NDJSON is in evidence/o2-green-2026-11-15.ndjson.</p>
+      <p class="muted" id="ndjson-label">LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full run: <a href="https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZMPNNH44CNKSPZZ49W0S0/dashboard/share/US_HWQV7HIZR96U8TJ9U5J093AVNJKQP82E0IC5LX1FO0FTYQHXW7D9SII7KUD1ZFOY?type=summary&amp;agentView=true&amp;fqdn=summary-page">Test Manager — O2 green sweep</a>. The raw NDJSON lives in evidence/ locally (not deployed).</p>
       <pre id="ndjson-body">Loading…</pre>
       <p><button id="copy-ndjson">Copy</button></p>
     </details>

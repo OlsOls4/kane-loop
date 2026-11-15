@@ -168,3 +168,30 @@ reconciliation.
 - **O1 replay (testmd run, saved loopmart-o1-core-6_test.md — the most recent passing O1 test, chosen over -5 which failed twice identically): FAILED a third time on a Kane replay-analyzer bug, NOT the app** — `analyzer_failed @ step 18`, 23 s, exit 1, **2.74 credits**, no result_code. Verdict: confirmed false, bug_title "Total-value capture fails despite correct cart total", family automation_bug, category config_issue, severity minor, confidence 0.93. This attempt got further than the first two (18 actions executed; variables show subtotal £15, £50, discount −£5 stored) and failed while analyzing/capturing the total even though the cart correctly displayed £45.00. The app was correct; the replay analyzer could not capture the total value. Session: 81133c1f-fedf-4b7b-963d-b563ab6579c2. No share test_url was emitted in the NDJSON. Evidence: evidence/o1-green-replay-3rd-2026-11-15.ndjson (+ .stderr).
 - **Final LOOP_VERIFIED status: substance-only, NOT literal.** Three replay attempts, three Kane-side analyzer failures (steps 2, 2, 18), all confirmed false, ~2–3 credits each. The literal replay leg (prep/03: GREEN = replay_pass AND independent_pass) never passed. The substance is proven: O1's exact objective passes on the fixed deploy (fresh author, result_code 100) and O2's independent sweep passes with the double-click yielding exactly one order (result_code 100). No fourth replay was attempted, per the task.
 - **Budget still healthy:** 9,723.47 − 250 reserve ≈ 9,473 usable ≈ ~150–170 iterations at ~50–76/run. No cost pressure.
+
+## Live gate (save-triggered runLiveGate) — 15 Nov 2026, ~21:25 GMT
+
+- **Balance:** 9,723.4681 → **9,720.7588**. Spend **2.71** (balance delta; no run_end credits emitted).
+- **Live gate (first real save-triggered run):** watcher → preflight (signed in) → live checks OK (balance 9,723.4681, spent 0.00, reserve 250; target HEAD 200) → testmd replay of `.testmuai/tests/loopmart-o1-core-6_test.md`. **FAILED a 4th time on a Kane replay-analyzer bug, NOT the app** — `analyzer_failed @ step 18`, 82.7 s, exit 1, **2.71 credits**, no result_code, no test_url. Same step-18 false failure as the 3rd attempt (Kane triage confidence 0.96: "the page shows the requested discount and total"). Journal: journal-live-2026-11-15.jsonl (run_id 20261115-212642-1, DIDNT_START → setup → PROVISIONAL_DONE). Evidence pack: .testmuai/evidence/33833b7c-253b-4df6-aba0-48acd96f0ede.evidence. Replay tally now **0/4** (steps 2, 2, 18, 18), all confirmed false, ~2–3 credits each.
+- **Total live spend to date: 479.24** (476.53 + 2.71); 11 live runs.
+- **Budget still healthy:** 9,720.7588 − 250 reserve ≈ 9,470 usable ≈ ~150–170 iterations at ~50–76/run. No cost pressure.
+- **VM replacement after the run** wiped the CLI/Chrome/forwarder/watcher again (3rd CLI reinstall, 0.10.4; OAuth token survived). All workspace files survived.
+
+## Fresh green re-run after deploy 6 (re-armed + G1-fixed app) — 15 Nov 2026, ~21:44–21:54 GMT
+
+- **Balance:** 9,720.7588 → **9,542.0641**. Session spend (balance delta) **178.69**; run_end credits sum 150.84. Gap 27.86 — same pattern as before; no invented reconciliation.
+- **O1 fresh author (deploy 6): PASSED** — 183.9 s, **59.60 credits**, result_code 100. Confirmation £45.00, 1 order, stock −1 each. Saved test loopmart-o1-core-7_test.md. Evidence evidence/o1-post-g1-2026-11-15.ndjson.
+- **O2 attempt 1: FAILED Kane-side (720)** — 125.7 s, **37.71 credits**. Agent never saved the expected discounted total before asserting it; app correct (£31.50 shown). Verdict confirmed false, automation_bug/config_issue/minor. Saved test loopmart-chaos-sweep-4_test.md.
+- **O2 retry: FAILED on the app (740)** — 177.1 s, **53.52 credits**. The re-armed seeded double-charge, caught live: 2 orders (LOOP-1001, LOOP-1002), £36.00, Notebook stock 6. Verdict confirmed, functional_defect/major. This is the seeded bug by design (deploy 6 re-armed it), not a regression — the 15:53 fix is not live on this deployment. Saved test loopmart-chaos-sweep-5_test.md.
+- **Total live spend to date: 657.94** (479.24 + 178.69); 14 live runs.
+- **Budget still healthy:** 9,542.06 − 250 reserve ≈ 9,292 usable. No cost pressure.
+- **G1 not directly exercised:** neither run clicked "Start new order" after a confirmation; the fix is in the deployed code (sha-verified) but the specific probe was not run.
+
+## Final green re-run (deploy 7, fixed build) — 15 Nov 2026, ~22:02–22:11 GMT
+
+- **Balance:** 9,542.0641 → **9,379.3207**. Session spend (balance delta) **162.74**; run_end credits sum 142.11. Gap 20.63 — same pattern as before; no invented reconciliation.
+- **O1 fresh author (deploy 7): PASSED** — 187 s, **56.82 credits**, result_code 100. Confirmation £45.00, 1 order, stock −1 each. Saved test loopmart-o1-core-8_test.md. Evidence evidence/o1-deploy7-2026-11-15.ndjson.
+- **O2 chaos sweep (deploy 7, + G1 probe): PASSED** — 227.8 s, **85.29 credits**, result_code 100. Double-click Pay → exactly 1 order, Notebook stock −2, other stock unchanged. G1 probe passed: after "Start new order" the ledger still shows LOOP-1001. Saved test loopmart-chaos-sweep-6_test.md. Evidence evidence/o2-deploy7-2026-11-15.ndjson.
+- **Total live spend to date: 820.68** (657.94 + 162.74); 16 live runs.
+- **Budget still healthy:** 9,379.32 − 250 reserve ≈ 9,129 usable. No cost pressure.
+- **Green evidence now stands on deploy 7** (O1 100 + O2 100 on the fixed build). Replay leg still 0/4, unproven — unchanged.

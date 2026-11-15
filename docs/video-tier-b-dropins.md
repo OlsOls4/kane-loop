@@ -1,12 +1,6 @@
-# Video Tier B drop-ins — LIVE RUN LANDED 15 Nov 2026 (partially live)
+# Video Tier B drop-ins — MERGED into video-script.md (fix pass, 15 Nov 2026)
 
-**Status:** DRAFT — swap these into the fallback cut's slots at the SAME timings.
-A real Kane run exists (sign-in + credits resolved, real `run_end` JSON on disk,
-real Test Manager `test_url`). **Partially live:** the bug-proved, evidence, and
-fixed-build slots are live. The green slot is SUBSTANCE-ONLY — the fresh O1 pass
-+ independent O2 sweep are real, but the literal replay leg is unproven (Kane's
-replay analyzer failed 3×, confirmed false). Never show a "replay passed"
-run_end: none exists.
+**Status:** MERGED — the fallback cut no longer exists. The fix-pass script (docs/video-script.md) carries the live slots below, with the chronology fixed (O1 real timer bug first) and the replay leg at 0/4. The green slot remains SUBSTANCE-ONLY — the fresh O1 pass + independent O2 sweep are real, but the literal replay leg is unproven (Kane's replay analyzer failed 4×, confirmed false). Never show a "replay passed" run_end: none exists. "No human in between" was dropped by the Wave 4 fix pass (parent instruction) and is NOT in the final script.
 
 ## Drop-ins (same slots, same timings)
 

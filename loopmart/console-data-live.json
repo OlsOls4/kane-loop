@@ -1,241 +1,365 @@
 {
-  "generated": "2026-11-15T16:27:29.575884Z",
-  "mode": "live",
-  "verdict": "GREEN (substance): fresh O1 + independent O2 pass (result_code 100); replay leg unproven \u2014 Kane analyzer fault (3 attempts)",
-  "credits": {
-    "spent": 476.53,
-    "balance": 9723.47,
-    "note": "476.53 credits spent 15 Nov (10,200 \u2192 9,723.47). run_end credits sum 360.64 across these 10 runs; the rest covers the VM-interrupted partial run (8.72), setup runs (~33), and unreconciled Kane-side metering \u2014 not itemised, not invented."
+ "generated": "2026-11-15T22:11:25Z",
+ "mode": "live",
+ "verdict": "GREEN (substance): fresh O1 + independent O2 pass (result_code 100) on the fixed build (deploy 7); replay leg unproven — Kane analyzer failed 4×. G1 ledger-preserve verified live: Start new order keeps the earlier order.",
+ "credits": {
+  "spent": 820.68,
+  "balance": 9379.32,
+  "note": "820.68 credits spent 15 Nov (10,200 → 9,379.32). run_end credits sum 646.31 across the 12 runs that emitted one; the four analyzer-failed replays add 9.99 (balance delta, no run_end); the rest covers the VM-interrupted partial run (8.72), setup runs (33.12), and 122.54 of unreconciled Kane-side metering (balance deltas run above run_end on the big runs) — not itemised, not invented."
+ },
+ "liveRunEnd": {
+  "type": "run_end",
+  "status": "passed",
+  "summary": "Added 2 Kane Notebooks (£10.00 each) and 1 Loop Mug (£15.00) to the cart, for a £35.00 subtotal.\nApplied discount code KANE10, reducing the cart total by 10% to £31.50.\nRemoved the Loop Mug from the cart; the 2 notebooks remained with the discount applied, for a £18.00 total.\nClicked Pay twice quickly and received one order confirmation, LOOP-1001. Only the 2 Kane Notebooks reduced in stock, from 10 to 8; other products' stock stayed unchanged.\nStarted a new order. The earlier order, LOOP-1001, remains listed in the order history.",
+  "one_liner": "completed a discounted notebook order on LoopMart",
+  "reason": "Objective completed",
+  "result_code": 100,
+  "reason_code": "success.complete",
+  "duration": 227.8,
+  "credits_consumed": 85.28851300000001,
+  "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GKY322WPZ4T2WY4VREF4H3/dashboard/share/US_MCJGDTRLQDDGS6Z1SF3V28SAUVFARFZ203H2YEWACLCXNZJ2L0AASDD0YWP7QXZQ?type=summary&agentView=true&fqdn=summary-page",
+  "final_state": {
+   "url": "https://kane-loop-loopmart.vercel.app/index.html",
+   "kane_notebook_price": "£10.00",
+   "loop_mug_price": "£15.00",
+   "cart_subtotal": "£35.00",
+   "discounted_cart_total": "£31.50",
+   "notebooks_discounted_total": "£18.00",
+   "checkout_order_id": "LOOP-1001",
+   "order_ledger_checkout_order_count": "1"
+  }
+ },
+ "runs": [
+  {
+   "run_id": "20261115-2210-o2-deploy7",
+   "trigger": "O2 chaos sweep, fresh author — double-click Pay + G1 probe (deploy 7, fixed build)",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Double-click Pay → exactly 1 order (LOOP-1001, no LOOP-1002); Kane Notebook stock 10 → 8 (−2), all other stock unchanged. G1 probe passed: after 'Start new order' the ledger still shows the earlier order (LOOP-1001). Seeded double-charge FIXED on the submitted build.",
+   "note": "LIVE Kane run — 227.8 s, 85.29 credits. Independent sweep pass: Kane derived the expected totals itself (£35.00 subtotal, £31.50 with KANE10, £18.00 for 2 notebooks). Saved test loopmart-chaos-sweep-6_test.md.",
+   "credits": 85.29,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GKY322WPZ4T2WY4VREF4H3/dashboard/share/US_MCJGDTRLQDDGS6Z1SF3V28SAUVFARFZ203H2YEWACLCXNZJ2L0AASDD0YWP7QXZQ?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "Deploy 6 (re-armed): 2 orders, stock −4. Deploy 7 (fixed): 1 order, stock −2, ledger preserved across Start new order."
   },
-  "liveRunEnd": {
-    "type": "run_end",
-    "status": "passed",
-    "summary": "Read the listed prices: Loop Mug \u00a315.00, Debug Hoodie \u00a335.00, and Kane Notebook \u00a310.00.\nAdded two Kane Notebooks and one Loop Mug, applied code KANE10, and confirmed the discounted total was \u00a331.50.\nSet the Loop Mug quantity to zero; the cart then contained only two Kane Notebooks with a discounted total of \u00a318.00.\nClicked Pay twice as requested and received confirmation of exactly one order; Kane Notebook stock decreased by two, while all other product stock remained unchanged.",
-    "one_liner": "completed a discounted checkout on Loop Mart",
-    "reason": "Objective completed",
-    "result_code": 100,
-    "duration": 180.5,
-    "credits_consumed": 49.734902500000004,
-    "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZMPNNH44CNKSPZZ49W0S0/dashboard/share/US_HWQV7HIZR96U8TJ9U5J093AVNJKQP82E0IC5LX1FO0FTYQHXW7D9SII7KUD1ZFOY?type=summary&agentView=true&fqdn=summary-page",
-    "final_state": {
-      "url": "https://kane-loop-loopmart.vercel.app/index.html",
-      "product_prices": "Loop Mug \u00a315.00; Debug Hoodie \u00a335.00; Kane Notebook \u00a310.00",
-      "discounted_total_with_mug": "\u00a331.50",
-      "final_cart_total": "\u00a318.00",
-      "order_count": "1",
-      "kane_notebook_stock_decrease": "2",
-      "other_product_stock_unchanged": "true"
-    }
+  {
+   "run_id": "20261115-2205-o1-deploy7",
+   "trigger": "O1 core checkout, fresh author (deploy 7, fixed build)",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Pay completes; confirmation shows Total paid £45.00 with order number LOOP-1001; exactly one order in the ledger, Loop Mug and Debug Hoodie stock −1 each. Checkout works on the fixed build.",
+   "note": "LIVE Kane run — 187 s, 56.82 credits. Fresh author run (verbatim O1 objective), not a replay. Saved test loopmart-o1-core-8_test.md.",
+   "credits": 56.82,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GKQ7Q4Y5364D8FK3F5WBSN/dashboard/share/US_IU49L0HY7MQQE5POIY1EYF3KPUOAD6WQJ6VHL2EUB1TVTOR8TNOT1CJWDCKE0RHV?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "1 order, stock −1 each; total £45.00."
   },
-  "runs": [
-    {
-      "run_id": "20261115-1616-replay3",
-      "trigger": "O1 replay, 3rd attempt (saved test loopmart-o1-core-6)",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": null,
-      "verdict": "FAILED \u2014 analyzer_failed (Kane-side, confirmed false)",
-      "failingStepLabel": "analyzer failed at step 18 (Kane-side)",
-      "remark": "Total-value capture fails despite correct cart total: the replay analyzer could not capture the total even though the cart correctly showed \u00a345.00. App state was correct throughout.",
-      "note": "LIVE Kane run \u2014 23 s, 2.74 credits (balance delta; run_end carries no credits). No result_code, no test_url emitted. 3rd of 3 replay attempts, all Kane-side analyzer failures.",
-      "credits": 2.74,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ]
-    },
-    {
-      "run_id": "20261115-1614-o2-green",
-      "trigger": "O2 chaos sweep, retry \u2014 double-click Pay",
-      "kind": "LIVE",
-      "status": "passed",
-      "exit_code": 0,
-      "result_code": 100,
-      "verdict": "PASSED \u2014 result_code 100",
-      "failingStepLabel": "All checks passed",
-      "remark": "Double-click Pay \u2192 exactly 1 order (LOOP-1001, no LOOP-1002); Kane Notebook stock \u22122, all other stock unchanged. Seeded double-charge FIXED in a real browser.",
-      "note": "LIVE Kane run \u2014 180.5 s, 49.73 credits. Independent sweep pass: Kane derived the expected total itself.",
-      "credits": 49.73,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ],
-      "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZMPNNH44CNKSPZZ49W0S0/dashboard/share/US_HWQV7HIZR96U8TJ9U5J093AVNJKQP82E0IC5LX1FO0FTYQHXW7D9SII7KUD1ZFOY?type=summary&agentView=true&fqdn=summary-page",
-      "beforeAfter": "Before fix: 2 orders, stock \u22124. After fix: 1 order, stock \u22122."
-    },
-    {
-      "run_id": "20261115-1612-o2-attempt1",
-      "trigger": "O2 chaos sweep, first attempt \u2014 double-click Pay",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": 750,
-      "verdict": "FAILED \u2014 result_code 750 (agent misstep, confirmed false)",
-      "failingStepLabel": "agent misstep \u2014 prices not saved",
-      "remark": "Price data was not saved before the workflow continued: the agent saw all three prices but did not save them as product_prices, so it could not do the self-derived totals. Not an app defect.",
-      "note": "LIVE Kane run \u2014 72.2 s, 13.39 credits. NDJSON overwritten by the retry; run_end fields survive in the run log.",
-      "credits": 13.39,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ],
-      "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZHGTGF1DSGCNFA1T510DS/dashboard/share/US_TBD0NJRJQNUCEBK9KYTZSPCUZ6LG8BWJK6CT0PMN3IPJFXMWGTKS27FB27N2L4AH?type=summary&agentView=true&fqdn=summary-page"
-    },
-    {
-      "run_id": "20261115-1609-o1-green",
-      "trigger": "O1 core flow, fresh author \u2014 full checkout",
-      "kind": "LIVE",
-      "status": "passed",
-      "exit_code": 0,
-      "result_code": 100,
-      "verdict": "PASSED \u2014 result_code 100",
-      "failingStepLabel": "All checks passed",
-      "remark": "Pay completes; confirmation shows \u00a345.00 paid with an order number; exactly one order in the ledger, stock \u22121 each.",
-      "note": "LIVE Kane run \u2014 179.3 s, 53.69 credits. Fresh author run (verbatim O1 objective), not a replay.",
-      "credits": 53.69,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ],
-      "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZB0749FW30BDBY7TF9K1F/dashboard/share/US_HG907EIFJVO7LQSYL511BMTANJ4AR4EZFJJSOYSGVWTQRULYF0J2QQF658IKKGCZ?type=summary&agentView=true&fqdn=summary-page",
-      "beforeAfter": "1 order, stock \u22121 each; total \u00a345.00."
-    },
-    {
-      "run_id": "20261115-1605-replay2",
-      "trigger": "O1 replay, 2nd attempt (saved test loopmart-o1-core-5)",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": null,
-      "verdict": "FAILED \u2014 analyzer_failed (Kane-side, confirmed false)",
-      "failingStepLabel": "analyzer failed at step 2 (Kane-side)",
-      "remark": "The replay analyzer stalled after reading the product price and never touched the cart. Page loaded fine. Not an app defect.",
-      "note": "LIVE Kane run \u2014 ~20 s, 2.15 credits (balance delta; run_end carries no credits). No result_code, no test_url emitted.",
-      "credits": 2.15,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ]
-    },
-    {
-      "run_id": "20261115-1605-replay1",
-      "trigger": "O1 replay, 1st attempt (saved test loopmart-o1-core-5)",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": null,
-      "verdict": "FAILED \u2014 analyzer_failed (Kane-side, confirmed false)",
-      "failingStepLabel": "analyzer failed at step 2 (Kane-side)",
-      "remark": "The replay analyzer stalled after reading the product price and never touched the cart. Page loaded fine. Not an app defect.",
-      "note": "LIVE Kane run \u2014 ~20 s, 2.39 credits (balance delta; run_end carries no credits). No result_code, no test_url emitted.",
-      "credits": 2.39,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ]
-    },
-    {
-      "run_id": "20261115-1546-o2",
-      "trigger": "O2 chaos sweep \u2014 double-click Pay",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": 740,
-      "verdict": "FAILED \u2014 result_code 740 (bug confirmed, 0.99)",
-      "failingStepLabel": "the ledger check failed",
-      "remark": "Double-clicking Pay creates duplicate checkout orders: 2 charges for one checkout (LOOP-1001, LOOP-1002), 2 orders, Kane Notebook stock \u22124 instead of \u22122. Verdict confirmed, confidence 0.99 \u2014 the seeded bug, caught live.",
-      "note": "LIVE Kane run \u2014 223.4 s, 75.71 credits. Seeded double-charge caught live; fix dispatched next.",
-      "credits": 75.71,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ],
-      "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FXZ19BTZ5B7MZXWB4EW3KE/dashboard/share/US_PDNLV9RN4CJYMURZNII9NCK6PITGJJ173NAYQUJD3QD8AWIYXX3NQBDW9PO2WZUL?type=summary&agentView=true&fqdn=summary-page",
-      "beforeAfter": "Before fix: 2 orders, stock \u22124. After fix: 1 order, stock \u22122."
-    },
-    {
-      "run_id": "20261115-1540-o1-rerun",
-      "trigger": "O1 core flow, re-run \u2014 full checkout",
-      "kind": "LIVE",
-      "status": "passed",
-      "exit_code": 0,
-      "result_code": 100,
-      "verdict": "PASSED \u2014 result_code 100",
-      "failingStepLabel": "All checks passed",
-      "remark": "Pay completes; confirmation shows \u00a345.00 paid; exactly one order, stock \u22121 each. Timer fix works.",
-      "note": "LIVE Kane run \u2014 175.1 s, 56.59 credits. 23 steps, fresh author run.",
-      "credits": 56.59,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ],
-      "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FXR6EC3WKBFEHVNQ8A3YWG/dashboard/share/US_OS2JCREK3S9K4T2876X4F92QJHRHBNLCLXCUVQGYCPFTIV8C62O6JO5ADP0ZNT8J?type=summary&agentView=true&fqdn=summary-page",
-      "beforeAfter": "1 order, stock \u22121 each; total \u00a345.00."
-    },
-    {
-      "run_id": "20261115-1520-o1-replay",
-      "trigger": "O1 core flow, replay of the first run",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": 740,
-      "verdict": "FAILED \u2014 result_code 740 (bug confirmed)",
-      "failingStepLabel": "Pay stuck on Processing",
-      "remark": "Pay stuck on Processing, no confirmation, no order, no stock change \u2014 the timer bug, reproduced identically. A replay costs ~54 credits, same as a fresh run.",
-      "note": "LIVE Kane run \u2014 181 s, 53.88 credits. No test_url emitted.",
-      "credits": 53.88,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ]
-    },
-    {
-      "run_id": "20261115-1511-o1",
-      "trigger": "O1 core flow \u2014 full checkout (first live run)",
-      "kind": "LIVE",
-      "status": "failed",
-      "exit_code": 1,
-      "result_code": 740,
-      "verdict": "FAILED \u2014 result_code 740 (bug confirmed)",
-      "failingStepLabel": "Pay stuck on Processing",
-      "remark": "Pay stuck on Processing, no confirmation, no order, no stock change. Root cause: app.js detaches setTimeout from window \u2192 TypeError: Illegal invocation in a real browser. A REAL bug, not the seeded one.",
-      "note": "LIVE Kane run \u2014 180.5 s, 50.37 credits. First live Kane run; caught a real bug.",
-      "credits": 50.37,
-      "fixDiff": [
-        "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-        "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-        "loopmart/app.js \u2014 Pay button disabled while Processing.",
-        "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-      ],
-      "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FW03721MN2TH13KPRJCXT6/dashboard/share/US_RZKRRB5UX1NOF8H5W6JCU9C6VX2PL6VFBZ1KBZ4QJ4915YJYT62CQT97L2U4TSJ8?type=summary&agentView=true&fqdn=summary-page",
-      "beforeAfter": "Before fix: no order, Pay stuck. After fix: 1 order, stock \u22121 each."
-    }
-  ],
-  "fixDiff": [
-    "loopmart/cart.js \u2014 pay(): if a confirmation exists, return it; never charge twice.",
-    "loopmart/app.js \u2014 onPayClick(): ignore clicks while Processing.",
-    "loopmart/app.js \u2014 Pay button disabled while Processing.",
-    "loopmart/app.js \u2014 default timers bound to window (timer fix, 15 Nov)."
-  ],
-  "replayNote": "O1 replay failed 3\u00d7 Kane-side (analyzer_failed at steps 2, 2, 18; confirmed false; ~2.4\u20132.7 credits each). The literal replay leg is unproven; the substance (fresh O1 pass + independent O2 pass) is green. Replays cost ~54 credits measured \u2014 not free.",
-  "bannerNote": "LIVE \u2014 10 completed Kane CLI runs, 15 Nov 2026. Latest: O2 sweep green (result_code 100). Replay leg unproven \u2014 Kane analyzer fault, not an app defect."
+  {
+   "run_id": "20261115-2153-o2-post-g1-retry",
+   "trigger": "O2 chaos sweep, retry — double-click Pay (post-G1 re-validation, deploy 6)",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": 740,
+   "verdict": "FAILED — result_code 740, verdict confirmed (real app defect)",
+   "failingStepLabel": "Step 19 — ledger exactly one order / Notebook stock −2",
+   "remark": "Double-click Pay → 2 orders (LOOP-1001, LOOP-1002), total £36.00, Kane Notebook stock 6 (−4 instead of −2). Verdict confirmed, functional_defect/major: the checkout accepted the second Pay click while the first payment was still processing. This is the RE-ARMED SEEDED bug by design (deploy 6 ships the mode-conditional guard, buggy by default) — same signature as the original 15:46 catch — not a regression of the 15:53 fix, which is not live on this deployment.",
+   "note": "LIVE Kane run — 177.1 s, 53.52 credits. The one retry this task allows; no further retry.",
+   "credits": 53.52,
+   "fixDiff": [
+    "loopmart/cart.js — double-charge guard is mode-conditional (re-armed 15 Nov): buggy mode double-charges by design; fixed mode returns the existing confirmation, never charges twice.",
+    "loopmart/app.js — onPayClick(): second click while Processing ignored in fixed mode; pendingCharges queue re-armed in buggy mode.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GK1B9HS1ZB828NA560BE7M/dashboard/share/US_RRJ6DKZCUIY6YKO26UMNIU6T90EG3XE1APCTWEAPDPXUI8ZC5YL2PU482XSB3A37?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "Before (fixed build, 16:15): 1 order, stock −2. Now (re-armed build, 21:53): 2 orders, stock −4 — the seeded bug is live again by design."
+  },
+  {
+   "run_id": "20261115-2149-o2-post-g1",
+   "trigger": "O2 chaos sweep, attempt 1 — double-click Pay (post-G1 re-validation, deploy 6)",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": 720,
+   "verdict": "FAILED — result_code 720 (Kane-side, confirmed false)",
+   "failingStepLabel": "Step 12 — cart total matches the total worked out",
+   "remark": "The agent never saved the expected discounted total (£31.50) as a variable before asserting it, so the assertion compared against an unset value. The app was correct throughout — the agent's own summary says the final screenshot shows KANE10 applied, £3.50 discount, £31.50 total. Same class as the 16:05 O2 attempt-1 failure (750, prices not saved). Verdict confirmed false, automation_bug/config_issue/minor.",
+   "note": "LIVE Kane run — 125.7 s, 37.71 credits. Retried once (see 21:53 run).",
+   "credits": 37.71,
+   "fixDiff": [
+    "loopmart/cart.js — double-charge guard is mode-conditional (re-armed 15 Nov): buggy mode double-charges by design; fixed mode returns the existing confirmation, never charges twice.",
+    "loopmart/app.js — onPayClick(): second click while Processing ignored in fixed mode; pendingCharges queue re-armed in buggy mode.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GJW6MQNHAQS7E250SV14V6/dashboard/share/US_G2H9H5STO6FHK7IFMTLIMP8QKC2084XZVY89KDPT6XC9VBEOU9CVWFDITDVTSPW2?type=summary&agentView=true&fqdn=summary-page"
+  },
+  {
+   "run_id": "20261115-2147-o1-post-g1",
+   "trigger": "O1 core checkout, fresh author — post-G1 re-validation (deploy 6)",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Confirmation £45.00 with order number, exactly 1 order in the ledger, Loop Mug and Debug Hoodie stock −1 each (steps 21–23 verified in the NDJSON). Checkout works on the re-armed + G1-fixed app; O1 clicks Pay once, so this pass does not test the double-charge.",
+   "note": "LIVE Kane run — 183.9 s, 59.60 credits. Saved test loopmart-o1-core-7_test.md.",
+   "credits": 59.6,
+   "fixDiff": [
+    "loopmart/cart.js — double-charge guard is mode-conditional (re-armed 15 Nov): buggy mode double-charges by design; fixed mode returns the existing confirmation, never charges twice.",
+    "loopmart/app.js — onPayClick(): second click while Processing ignored in fixed mode; pendingCharges queue re-armed in buggy mode.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GJMZM06VATGADFHTF7Q4AE/dashboard/share/US_RZ6ONKTEWTMGBAT5ZQI5ZOYH6PQG25LDV95HT96D10JXTLBY74VVE9H4VC6TD4EK?type=summary&agentView=true&fqdn=summary-page"
+  },
+  {
+   "run_id": "20261115-2126-live-gate",
+   "trigger": "Live gate (save-triggered runLiveGate) — O1 replay",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": null,
+   "verdict": "FAILED — analyzer_failed (Kane-side, confirmed false)",
+   "failingStepLabel": "analyzer failed at step 18 (Kane-side)",
+   "remark": "Same step-18 total-capture fault as the 3rd replay attempt: the analyzer could not recognize the visible cart total after the discount, though the page showed £45.00. Kane triage confidence 0.96, category automation_bug. App state correct throughout.",
+   "note": "LIVE Kane run — 82.7 s, 2.71 credits (balance delta; no run_end credits). First save-triggered gate run; live checks passed (balance 9,723.47, reserve 250, target HEAD 200), then the gate stopped on DIDNT_START per design. 4th of 4 replay attempts, all Kane-side analyzer failures. No result_code, no test_url emitted.",
+   "credits": 2.71,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261115-1616-replay3",
+   "trigger": "O1 replay, 3rd attempt (saved test loopmart-o1-core-6)",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": null,
+   "verdict": "FAILED — analyzer_failed (Kane-side, confirmed false)",
+   "failingStepLabel": "analyzer failed at step 18 (Kane-side)",
+   "remark": "Total-value capture fails despite correct cart total: the replay analyzer could not capture the total even though the cart correctly showed £45.00. App state was correct throughout.",
+   "note": "LIVE Kane run — 23 s, 2.74 credits (balance delta; run_end carries no credits). No result_code, no test_url emitted. 3rd of 3 replay attempts, all Kane-side analyzer failures.",
+   "credits": 2.74,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261115-1614-o2-green",
+   "trigger": "O2 chaos sweep, retry — double-click Pay",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Double-click Pay → exactly 1 order (LOOP-1001, no LOOP-1002); Kane Notebook stock −2, all other stock unchanged. Seeded double-charge FIXED in a real browser.",
+   "note": "LIVE Kane run — 180.5 s, 49.73 credits. Independent sweep pass: Kane derived the expected total itself.",
+   "credits": 49.73,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZMPNNH44CNKSPZZ49W0S0/dashboard/share/US_HWQV7HIZR96U8TJ9U5J093AVNJKQP82E0IC5LX1FO0FTYQHXW7D9SII7KUD1ZFOY?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "Before fix: 2 orders, stock −4. After fix: 1 order, stock −2."
+  },
+  {
+   "run_id": "20261115-1612-o2-attempt1",
+   "trigger": "O2 chaos sweep, first attempt — double-click Pay",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": 750,
+   "verdict": "FAILED — result_code 750 (agent misstep, confirmed false)",
+   "failingStepLabel": "agent misstep — prices not saved",
+   "remark": "Price data was not saved before the workflow continued: the agent saw all three prices but did not save them as product_prices, so it could not do the self-derived totals. Not an app defect.",
+   "note": "LIVE Kane run — 72.2 s, 13.39 credits. NDJSON overwritten by the retry; run_end fields survive in the run log.",
+   "credits": 13.39,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZHGTGF1DSGCNFA1T510DS/dashboard/share/US_TBD0NJRJQNUCEBK9KYTZSPCUZ6LG8BWJK6CT0PMN3IPJFXMWGTKS27FB27N2L4AH?type=summary&agentView=true&fqdn=summary-page"
+  },
+  {
+   "run_id": "20261115-1609-o1-green",
+   "trigger": "O1 core flow, fresh author — full checkout",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Pay completes; confirmation shows £45.00 paid with an order number; exactly one order in the ledger, stock −1 each.",
+   "note": "LIVE Kane run — 179.3 s, 53.69 credits. Fresh author run (verbatim O1 objective), not a replay.",
+   "credits": 53.69,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZB0749FW30BDBY7TF9K1F/dashboard/share/US_HG907EIFJVO7LQSYL511BMTANJ4AR4EZFJJSOYSGVWTQRULYF0J2QQF658IKKGCZ?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "1 order, stock −1 each; total £45.00."
+  },
+  {
+   "run_id": "20261115-1605-replay2",
+   "trigger": "O1 replay, 2nd attempt (saved test loopmart-o1-core-5)",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": null,
+   "verdict": "FAILED — analyzer_failed (Kane-side, confirmed false)",
+   "failingStepLabel": "analyzer failed at step 2 (Kane-side)",
+   "remark": "The replay analyzer stalled after reading the product price and never touched the cart. Page loaded fine. Not an app defect.",
+   "note": "LIVE Kane run — ~20 s, 2.15 credits (balance delta; run_end carries no credits). No result_code, no test_url emitted.",
+   "credits": 2.15,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261115-1605-replay1",
+   "trigger": "O1 replay, 1st attempt (saved test loopmart-o1-core-5)",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": null,
+   "verdict": "FAILED — analyzer_failed (Kane-side, confirmed false)",
+   "failingStepLabel": "analyzer failed at step 2 (Kane-side)",
+   "remark": "The replay analyzer stalled after reading the product price and never touched the cart. Page loaded fine. Not an app defect.",
+   "note": "LIVE Kane run — ~20 s, 2.39 credits (balance delta; run_end carries no credits). No result_code, no test_url emitted.",
+   "credits": 2.39,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261115-1546-o2",
+   "trigger": "O2 chaos sweep — double-click Pay",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": 740,
+   "verdict": "FAILED — result_code 740 (bug confirmed, 0.99)",
+   "failingStepLabel": "the ledger check failed",
+   "remark": "Double-clicking Pay creates duplicate checkout orders: 2 charges for one checkout (LOOP-1001, LOOP-1002), 2 orders, Kane Notebook stock −4 instead of −2. Verdict confirmed, confidence 0.99 — the seeded bug, caught live.",
+   "note": "LIVE Kane run — 223.4 s, 75.71 credits. Seeded double-charge caught live; fix dispatched next.",
+   "credits": 75.71,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FXZ19BTZ5B7MZXWB4EW3KE/dashboard/share/US_PDNLV9RN4CJYMURZNII9NCK6PITGJJ173NAYQUJD3QD8AWIYXX3NQBDW9PO2WZUL?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "Before fix: 2 orders, stock −4. After fix: 1 order, stock −2."
+  },
+  {
+   "run_id": "20261115-1540-o1-rerun",
+   "trigger": "O1 core flow, re-run — full checkout",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Pay completes; confirmation shows £45.00 paid; exactly one order, stock −1 each. Timer fix works.",
+   "note": "LIVE Kane run — 175.1 s, 56.59 credits. 23 steps, fresh author run.",
+   "credits": 56.59,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FXR6EC3WKBFEHVNQ8A3YWG/dashboard/share/US_OS2JCREK3S9K4T2876X4F92QJHRHBNLCLXCUVQGYCPFTIV8C62O6JO5ADP0ZNT8J?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "1 order, stock −1 each; total £45.00."
+  },
+  {
+   "run_id": "20261115-1520-o1-replay",
+   "trigger": "O1 core flow, replay of the first run",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": 740,
+   "verdict": "FAILED — result_code 740 (bug confirmed)",
+   "failingStepLabel": "Pay stuck on Processing",
+   "remark": "Pay stuck on Processing, no confirmation, no order, no stock change — the timer bug, reproduced identically. A replay costs ~54 credits, same as a fresh run.",
+   "note": "LIVE Kane run — 181 s, 53.88 credits. No test_url emitted.",
+   "credits": 53.88,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261115-1511-o1",
+   "trigger": "O1 core flow — full checkout (first live run)",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": 740,
+   "verdict": "FAILED — result_code 740 (bug confirmed)",
+   "failingStepLabel": "Pay stuck on Processing",
+   "remark": "Pay stuck on Processing, no confirmation, no order, no stock change. Root cause: app.js detaches setTimeout from window → TypeError: Illegal invocation in a real browser. A REAL bug, not the seeded one.",
+   "note": "LIVE Kane run — 180.5 s, 50.37 credits. First live Kane run; caught a real bug.",
+   "credits": 50.37,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FW03721MN2TH13KPRJCXT6/dashboard/share/US_RZKRRB5UX1NOF8H5W6JCU9C6VX2PL6VFBZ1KBZ4QJ4915YJYT62CQT97L2U4TSJ8?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "Before fix: no order, Pay stuck. After fix: 1 order, stock −1 each."
+  }
+ ],
+ "fixDiff": [
+  "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+  "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+  "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+  "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+ ],
+ "replayNote": "O1 replay failed 4× Kane-side (analyzer_failed at steps 2, 2, 18, 18; confirmed false; ~2.4–2.7 credits each). The literal replay leg is unproven; the substance (fresh O1 pass + independent O2 pass) is green. Replays cost ~54 credits measured — not free.",
+ "bannerNote": "LIVE — 16 completed Kane CLI runs, 15 Nov 2026. Latest: O2 sweep green (100) on deploy 7 — double-click Pay → 1 order, Notebook stock −2, G1 probe passed. O1 green (100). Fixed build is live; seeded bug armed only via ?mode=buggy / Break it."
 }

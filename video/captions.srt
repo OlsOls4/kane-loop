@@ -1,0 +1,191 @@
+1
+00:00:00,000 --> 00:00:01,897
+This checkout looks done.
+
+2
+00:00:01,957 --> 00:00:04,246
+It isn't — and nobody checked.
+
+3
+00:00:04,306 --> 00:00:06,438
+Watch: Pay is clicked twice.
+
+4
+00:00:06,498 --> 00:00:07,455
+One checkout.
+
+5
+00:00:07,515 --> 00:00:09,412
+Two orders in the ledger.
+
+6
+00:00:09,472 --> 00:00:11,213
+Each stock down by two.
+
+7
+00:00:11,273 --> 00:00:15,832
+The total on screen still says forty-five
+pounds — correct.
+
+8
+00:00:15,892 --> 00:00:18,240
+The money underneath is wrong.
+
+9
+00:00:18,740 --> 00:00:23,342
+Kane Loop is a watcher that blocks on a
+diff, not on a claim.
+
+10
+00:00:23,402 --> 00:00:25,176
+One command installs it.
+
+11
+00:00:25,236 --> 00:00:27,086
+One save starts the gate.
+
+12
+00:00:27,146 --> 00:00:36,944
+It watches the repo: a save runs the gate,
+Kane checks the checkout, and a red
+verdict blocks the ship until the fix is
+verified.
+
+13
+00:00:37,004 --> 00:00:39,908
+No dashboard, no 'trust me, it works.'
+
+14
+00:00:40,408 --> 00:00:43,711
+That double charge is the seeded bug —
+disclosed up front.
+
+15
+00:00:43,771 --> 00:00:49,163
+LoopMart is a checkout with three
+products, one discount code, and one bug
+planted on purpose.
+
+16
+00:00:49,223 --> 00:00:56,933
+But the first live run caught a real one
+first: Pay stuck on Processing, a timer
+detached from the window, so the payment
+never fired.
+
+17
+00:00:56,993 --> 00:01:02,037
+The checkout was completely broken in a
+real browser — and the unit tests had
+missed it.
+
+18
+00:01:02,097 --> 00:01:03,660
+Result code seven-four-zero.
+
+19
+00:01:03,720 --> 00:01:06,040
+One fix later, the core flow went green.
+
+20
+00:01:06,540 --> 00:01:08,281
+The loop itself runs on real output.
+
+21
+00:01:08,341 --> 00:01:12,284
+One hundred tests pass — parser,
+classifier, the checkout, the fixer, the
+sweep.
+
+22
+00:01:12,344 --> 00:01:17,087
+Sixteen live runs, eight hundred twenty
+credits spent — every number on screen is
+a real result.
+
+23
+00:01:17,147 --> 00:01:21,641
+Then Kane ran the checkout live, and the
+ledger check failed: the same order
+charged twice.
+
+24
+00:01:21,701 --> 00:01:25,693
+Result code seven-four-zero — the
+classifier's verdict, not a claim from the
+app.
+
+25
+00:01:25,753 --> 00:01:32,508
+The gate needs two greens before it calls
+anything verified: the same test replayed,
+and a fresh sweep that works the total out
+itself.
+
+26
+00:01:33,008 --> 00:01:41,222
+The fix is one patch, twenty-eight lines
+across two files — a single-flight guard
+and an idempotency guard.
+
+27
+00:01:41,282 --> 00:01:47,640
+The loop applies its own bounded patch for
+the bug class: one patch, no test edits.
+
+28
+00:01:47,700 --> 00:01:51,892
+Toggle the mode and the same double-click
+charges once.
+
+29
+00:01:51,952 --> 00:01:54,968
+What you are seeing is the fixed build.
+
+30
+00:01:55,468 --> 00:01:56,629
+So what happened?
+
+31
+00:01:56,689 --> 00:01:58,568
+Kane ran the checkout live.
+
+32
+00:01:58,628 --> 00:02:05,607
+The core flow passed, and the chaos sweep
+went green on retry: one order, result
+code one hundred.
+
+33
+00:02:05,667 --> 00:02:10,850
+Same test, same checkout — and Kane
+checked it a second, independent way.
+
+34
+00:02:10,910 --> 00:02:15,806
+One hundred tests, sixteen live runs, two
+independent green verdicts.
+
+35
+00:02:15,866 --> 00:02:19,828
+And the ledger now survives a new order —
+verified live.
+
+36
+00:02:19,888 --> 00:02:24,556
+Replay unproven — Kane's analyzer failed
+four times, not the app.
+
+37
+00:02:25,056 --> 00:02:31,262
+Kane Loop: a watcher any agent can install
+in one command, that blocks on a diff, not
+on a claim.
+
+38
+00:02:31,322 --> 00:02:33,265
+Try it — one link, one command.
+
+39
+00:02:33,325 --> 00:02:34,488
+Break it yourself.

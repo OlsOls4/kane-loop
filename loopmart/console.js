@@ -7,14 +7,18 @@
  * dry-run loop regenerates as EXAMPLE data (`npm test` rewrites it —
  * that is by design, and a test pins it; never put live data there).
  * Nothing here presents synthetic output as a live Kane run: the replay
- * leg is unproven (3 Kane-side analyzer failures) and the console says so.
+ * leg is unproven (4 Kane-side analyzer failures) and the console says so.
  *
  * Break it (console header): arms the seeded bug in the checkout, fills
  * Mug + Hoodie + KANE10, double-clicks Pay, and reproduces the scenario
- * LOCALLY (no Kane run starts from this button). With the fix shipped,
- * the guard proves one charge — the local reproduction is the demo of
- * the guard, not of the bug. The ledger change shown is the LOCAL
- * reproduction, labelled as such.
+ * LOCALLY (no Kane run starts from this button). The seeded bug was
+ * re-armed 15 Nov (Wave 4 fix): the double-click now reproduces the
+ * double-charge locally (2 orders) — the label "Break it" is honest
+ * again. The ledger change shown is the LOCAL reproduction, labelled
+ * as such. (Before the re-arm, the fix guarded both modes and Break it
+ * could only demo the guard; the copy then said so. See the git history
+ * of loopmart/cart.js if the wording looks inconsistent with an old
+ * screenshot.)
  *
  * Replay last failure: re-runs the local scenario against the CURRENT
  * code (the mode is whatever the checkout is in — buggy after Break it,
@@ -90,7 +94,13 @@
     if (run.remark) html += '<blockquote>' + esc(run.remark) + '</blockquote>';
     if (run.note) html += '<p>' + esc(run.note) + '</p>';
     if (run.fixDiff && run.fixDiff.length) {
-      html += '<p><span class="label">Fix (dry-run patch, ≤10 lines):</span></p><pre>' + esc(run.fixDiff.join('\n')) + '</pre>';
+      // Live runs show the fix that actually shipped (28 lines, 2 files);
+      // local/dry-run rows show the dry-run patch. Never label a live
+      // run's fix as a dry-run patch (Wave 4 fix).
+      var fixLabel = run.kind === 'LIVE'
+        ? 'Fix shipped for this bug (28 lines, 2 files):'
+        : 'Fix (dry-run patch):';
+      html += '<p><span class="label">' + esc(fixLabel) + '</span></p><pre>' + esc(run.fixDiff.join('\n')) + '</pre>';
     }
     if (run.beforeAfter) html += '<p><span class="label">Before / after:</span> ' + esc(run.beforeAfter) + '</p>';
     if (run.result_code !== null && run.result_code !== undefined) html += '<p><span class="label">result_code:</span> ' + esc(run.result_code) + '</p>';
@@ -108,7 +118,17 @@
     var rows = localRuns.slice();
     if (data && data.runs) rows = rows.concat(data.runs);
     if (data && data.exampleRun) rows.push(data.exampleRun);
-    return rows.slice(0, 10);
+    return rows.slice(0, 12); // 11 live runs + the example row (was 10 — the 11th run cut the first live run off the timeline)
+  }
+
+  // Pass/fail badge for a timeline row (Wave 4 fix): a failed latest run
+  // must not read as the headline — every row carries its own badge.
+  function rowBadge(run) {
+    if (run.status === 'passed') return '✓ PASS';
+    if (run.status === 'failed') return '✗ FAIL';
+    if (run.verdict && /PASSED/.test(run.verdict)) return '✓ PASS';
+    if (run.verdict && /FAILED/.test(run.verdict)) return '✗ FAIL';
+    return run.verdict || '—';
   }
 
   function rowLabel(run) {
@@ -116,14 +136,15 @@
     var exit = run.exit_code === null || run.exit_code === undefined
       ? (run.exitCode === null || run.exitCode === undefined ? '' : ' — exit ' + run.exitCode)
       : ' — exit ' + run.exit_code;
-    return (run.run_id || '—') + ' · ' + (run.trigger || '') + ' — ' + verdict + exit;
+    return rowBadge(run) + ' · ' + (run.run_id || '—') + ' · ' + (run.trigger || '') + ' — ' + verdict + exit;
   }
 
   function renderTimeline() {
     timelineEl.innerHTML = '';
     allRuns().forEach(function (run) {
       var b = document.createElement('button');
-      b.className = 'timeline-row';
+      var badge = rowBadge(run);
+      b.className = 'timeline-row' + (badge === '✓ PASS' ? ' pass' : badge === '✗ FAIL' ? ' fail' : '');
       b.setAttribute('aria-pressed', selected === run ? 'true' : 'false');
       b.textContent = rowLabel(run) + (selected === run ? ' — Selected, showing above' : '');
       b.onclick = function () { renderCard(normalise(run)); };
@@ -209,7 +230,7 @@
       return;
     }
     breakBtn.disabled = true;
-    setStrip('WORKING — double-clicking Pay locally (guard active — expect 1 order)…', 'Local reproduction only — no Kane run is starting.');
+    setStrip('WORKING — double-clicking Pay locally (seeded bug armed — expect 2 orders)…', 'Local reproduction only — no Kane run is starting.');
     driveCheckout();
     setTimeout(function () {
       var result = readLocalResult();
@@ -219,15 +240,15 @@
         verdict: 'LOCAL', exitCode: null, result_code: null,
         failingStepLabel: failed ? 'the ledger check failed' : 'All checks passed',
         remark: result.remark,
-        note: 'Local reproduction (no Kane run): double-click Pay → ' + result.orders + ' ledger order(s). With the fix shipped the guard proves one charge. Live Kane runs are in the timeline below.',
+        note: 'Local reproduction (no Kane run): double-click Pay → ' + result.orders + ' ledger order(s). Break it arms the seeded double-charge (re-armed 15 Nov); the guard proves one charge only in fixed mode. Live Kane runs are in the timeline below.',
         fixDiff: data ? data.fixDiff : [],
         beforeAfter: 'Before fix: ' + result.orders + ' orders, stock Mug ' + result.stock.mug + ' / Hoodie ' + result.stock.hoodie + '. After fix: 1 order, stock −1 each.',
       };
       localRuns.unshift(run);
       if (failed) lastFailed = run;
       setStrip(failed
-        ? 'LOCAL — double-click Pay reproduced locally: ' + result.orders + ' ledger orders for one checkout.'
-        : 'LOCAL — double-click Pay reproduced locally: exactly 1 order (guard active).',
+        ? 'LOCAL — double-click Pay reproduced locally: ' + result.orders + ' ledger orders for one checkout — the seeded double-charge.'
+        : 'LOCAL — double-click Pay reproduced locally: exactly 1 order (guard active — fixed mode).',
         'No Kane run started from this button — live runs are in the timeline.');
       renderCard(run);
       updateReplayButton();
@@ -282,7 +303,15 @@
     var ndjsonLabel = document.getElementById('ndjson-label');
     if (d.liveRunEnd) {
       ndjsonBody.textContent = JSON.stringify(d.liveRunEnd, null, 2);
-      if (ndjsonLabel) ndjsonLabel.textContent = 'LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full NDJSON is in evidence/o2-green-2026-11-15.ndjson.';
+      // Wave 4 fix: the old label cited evidence/o2-green-2026-11-15.ndjson,
+      // which is gitignored and NOT deployed — it 404s live. Cite the real
+      // LambdaTest Test Manager URL from the live data instead.
+      if (ndjsonLabel) {
+        var testUrl = d.liveRunEnd.test_url;
+        ndjsonLabel.innerHTML = 'LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full run: '
+          + (testUrl ? '<a href="' + esc(testUrl) + '">Test Manager — O2 green sweep</a>' : 'no test_url emitted')
+          + '. The raw NDJSON lives in evidence/ locally (not deployed).';
+      }
     } else {
       ndjsonBody.textContent = JSON.stringify(FIXTURE_RUN_END, null, 2);
     }

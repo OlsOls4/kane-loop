@@ -80,13 +80,13 @@ function stockText(doc) {
   return doc.getElementById('stock-list').findAll((e) => e.tag === 'li').map((li) => li.textContent);
 }
 
-check('fresh load: empty cart, total £0.00, seeded bug ARMED', () => {
+check('fresh load: empty cart, total £0.00, guard active (fixed by default)', () => {
   const { doc } = makeApp('');
   // (The fake document carries no static HTML text; the empty-cart line
   // itself is verified in the real page. Here we check the rendered state.)
   assert.equal(doc.getElementById('cart-empty').hidden, false);
   assert.equal(text(doc, 'total'), '£0.00');
-  assert.equal(text(doc, 'bug-status'), 'Seeded bug ARMED — guard active: double-click Pay proves one charge.');
+  assert.equal(text(doc, 'bug-status'), 'Seeded bug OFF — guard active: one charge per checkout (correct behaviour).');
   assert.equal(doc.getElementById('confirmation').hidden, true);
   // Stock renders on a cold load (UI/UX bug, 15 Nov): 10/10/10.
   assert.deepEqual(stockText(doc), [
@@ -121,7 +121,7 @@ check('KANE10 applies once; wrong code shows the try-KANE10 message', () => {
   assert.equal(text(doc, 'total'), '£45.00');
 });
 
-check('Pay once (buggy default): Processing… then LOOP-1001, £45, 1 ledger order, stock 9/9', () => {
+check('Pay once (fixed default): Processing… then LOOP-1001, £45, 1 ledger order, stock 9/9', () => {
   const { doc, timers } = makeApp('');
   doc.getElementById('demo-add').click();
   doc.getElementById('discount-code').value = 'KANE10';
@@ -148,13 +148,34 @@ check('Pay once (buggy default): Processing… then LOOP-1001, £45, 1 ledger or
   assert.equal(text(doc, 'ledger-summary'), '1 order, total £45.00');
 });
 
-check('REGRESSION (live Kane O2, 15 Nov): double-click Pay during Processing = 1 order, stock 9/9, LOOP-1001', () => {
-  const { doc, timers } = makeApp('');
+check('buggy mode (?mode=buggy): double-click Pay during Processing = 2 orders, LOOP-1001 + LOOP-1002, anomaly flag (seeded bug, re-armed 15 Nov)', () => {
+  const { doc, timers } = makeApp('?mode=buggy');
   doc.getElementById('demo-add').click();
   doc.getElementById('discount-code').value = 'KANE10';
   doc.getElementById('apply-discount').click();
   doc.getElementById('pay-button').click(); // Processing… starts, charge queued
-  doc.getElementById('pay-button').click(); // double-click: single-flight ignores it
+  doc.getElementById('pay-button').click(); // double-click: second charge queued (seeded bug)
+  assert.equal(ledgerRows(doc).length, 0, 'no ledger row before Processing ends');
+  timers.fns[0]();
+  assert.equal(text(doc, 'conf-order'), 'LOOP-1002');
+  assert.equal(ledgerRows(doc).length, 2);
+  assert.deepEqual(stockText(doc), [
+    'Loop Mug — 8 in stock', 'Debug Hoodie — 8 in stock', 'Kane Notebook — 10 in stock',
+  ]);
+  // The anomaly flag names both charges in text, not colour-only.
+  assert.equal(doc.getElementById('charge-flag').hidden, false);
+  assert.equal(text(doc, 'charge-flag'), '⚠ 2 charges for one checkout — expected 1 (LOOP-1001, LOOP-1002)');
+  assert.equal(text(doc, 'ledger-summary'), '2 orders, total £90.00');
+});
+
+check('default load is fixed (15 Nov): double-click Pay on a fresh load = 1 order, stock −1 each, no duplicate', () => {
+  const { doc, timers } = makeApp('');
+  assert.equal(text(doc, 'bug-status'), 'Seeded bug OFF — guard active: one charge per checkout (correct behaviour).');
+  doc.getElementById('demo-add').click();
+  doc.getElementById('discount-code').value = 'KANE10';
+  doc.getElementById('apply-discount').click();
+  doc.getElementById('pay-button').click(); // Processing… starts, charge queued
+  doc.getElementById('pay-button').click(); // double-click: ignored in fixed mode
   assert.equal(ledgerRows(doc).length, 0, 'no ledger row before Processing ends');
   timers.fns[0]();
   assert.equal(text(doc, 'conf-order'), 'LOOP-1001');
@@ -162,8 +183,7 @@ check('REGRESSION (live Kane O2, 15 Nov): double-click Pay during Processing = 1
   assert.deepEqual(stockText(doc), [
     'Loop Mug — 9 in stock', 'Debug Hoodie — 9 in stock', 'Kane Notebook — 10 in stock',
   ]);
-  // No anomaly flag on a single charge.
-  assert.equal(doc.getElementById('charge-flag').hidden, true);
+  assert.equal(doc.getElementById('charge-flag').hidden, true, 'no anomaly flag on a single charge');
   assert.equal(text(doc, 'ledger-summary'), '1 order, total £45.00');
 });
 
@@ -180,7 +200,7 @@ check('retry after confirmation is ignored (unreachable in a real browser: pay s
 
 check('fixed mode (?mode=fixed): double-click and retry stay at 1 order', () => {
   const { doc, timers } = makeApp('?mode=fixed');
-  assert.equal(text(doc, 'bug-status'), 'Seeded bug OFF: one charge per checkout (correct behaviour).');
+  assert.equal(text(doc, 'bug-status'), 'Seeded bug OFF — guard active: one charge per checkout (correct behaviour).');
   doc.getElementById('demo-add').click();
   doc.getElementById('pay-button').click();
   doc.getElementById('pay-button').click(); // disabled in fixed mode; handler ignores
@@ -193,15 +213,17 @@ check('fixed mode (?mode=fixed): double-click and retry stay at 1 order', () => 
 check('Reset restores correct behaviour; Break it re-arms the bug', () => {
   const { doc, timers } = makeApp('');
   doc.getElementById('reset-bug').click();
-  assert.equal(text(doc, 'bug-status'), 'Seeded bug OFF: one charge per checkout (correct behaviour).');
+  assert.equal(text(doc, 'bug-status'), 'Seeded bug OFF — guard active: one charge per checkout (correct behaviour).');
   doc.getElementById('demo-add').click();
   doc.getElementById('pay-button').click();
   doc.getElementById('pay-button').click();
   timers.fns[0]();
   assert.equal(ledgerRows(doc).length, 1);
   doc.getElementById('break-it').click();
-  assert.equal(text(doc, 'bug-status'), 'Seeded bug ARMED — guard active: double-click Pay proves one charge.');
-  assert.equal(ledgerRows(doc).length, 0);
+  assert.equal(text(doc, 'bug-status'), 'Seeded bug ARMED: double-charge on double-click Pay during Processing.');
+  // G1 fixed 15 Nov: Break it resets the store but the completed order
+  // survives in the ledger (spec §3.4); only the cart total resets.
+  assert.equal(ledgerRows(doc).length, 1);
   assert.equal(text(doc, 'total'), '£0.00');
 });
 
@@ -311,38 +333,38 @@ check('keyboard-only walkthrough: demo-add -> KANE10 -> Pay -> confirmation + le
   assert.ok(/id="view-run">Seeded bug controls</.test(html));
 });
 
-check('G1 is named in the console before "Start new order" is clicked (known defect G1 — Kane\'s next catch)', () => {
+check('G1 fixed 15 Nov: the note is in the seeded box (visible before any order), not hidden inside #confirmation', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-  // The note sits inside #confirmation, next to the "Start new order"
-  // button — a judge sees it before clicking it, not only in README/tests.
-  const confStart = html.indexOf('id="confirmation"');
+  // The note moved out of #confirmation (hidden until an order
+  // completes) into the seeded box, which is always visible.
   const noteStart = html.indexOf('id="g1-note"');
-  const newOrderStart = html.indexOf('id="new-order"');
-  assert.ok(confStart !== -1 && noteStart !== -1 && newOrderStart !== -1);
-  assert.ok(noteStart > confStart, 'the G1 note is inside the confirmation block');
-  assert.ok(noteStart > newOrderStart, 'the G1 note sits by the Start new order button');
-  assert.ok(/Known defect G1 — Kane's next catch/.test(html), 'the note names G1 as Kane\'s next catch');
-  assert.ok(/Start new order.\s+wipes the\s+ledger/.test(html), 'the note states the defect plainly');
+  const seededStart = html.indexOf('id="seeded-box"');
+  const ledgerHeading = html.indexOf('<h2>Order ledger</h2>');
+  assert.ok(noteStart !== -1 && seededStart !== -1 && ledgerHeading !== -1);
+  assert.ok(noteStart > seededStart, 'the G1 note is inside the seeded box');
+  assert.ok(noteStart > ledgerHeading, 'the G1 note is past the #confirmation block entirely');
+  assert.ok(/G1 fixed 15 Nov/.test(html), 'the note says G1 is fixed');
+  assert.ok(/ledger now persists across orders/.test(html), 'the note states the fixed behaviour plainly');
 });
 
-check('GENUINE DEFECT G1 (retained, disclosed): Start new order wipes the ledger', () => {
+check('G1 FIXED (15 Nov): Start new order keeps the ledger — both orders survive', () => {
   const { doc, timers } = makeApp('?mode=fixed');
   doc.getElementById('demo-add').click();
   doc.getElementById('pay-button').click();
   timers.fns[0]();
   assert.equal(ledgerRows(doc).length, 1);
   doc.getElementById('new-order').click();
-  // The completed order is gone from the ledger (spec §3.4 says every
-  // completed order is appended to a visible ledger). Retained as the
-  // disclosed genuine defect for Kane to catch; see README Known issues.
-  assert.equal(ledgerRows(doc).length, 0);
+  // The completed order stays in the ledger (spec §3.4: every completed
+  // order is appended to a visible ledger). G1 fixed by the fixer's
+  // g1-ledger-preserve strategy; see README Known issues.
+  assert.equal(ledgerRows(doc).length, 1, 'the first order survives "Start new order"');
   doc.getElementById('demo-add').click();
   doc.getElementById('pay-button').click();
   timers.fns[1]();
   assert.equal(text(doc, 'conf-order'), 'LOOP-1002');
-  assert.equal(ledgerRows(doc).length, 1, 'only the second order survives');
+  assert.equal(ledgerRows(doc).length, 2, 'both orders are in the ledger');
 });
 
 check('REGRESSION (live Kane O1, 15 Nov): default timers are bound — Pay works with a browser-strict setTimeout', () => {

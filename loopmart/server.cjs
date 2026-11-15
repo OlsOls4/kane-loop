@@ -57,7 +57,7 @@ const server = http.createServer((req, res) => {
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log('Kane Loop console on http://localhost:' + PORT + ' (checkout at /index.html; mode via ?mode=buggy|fixed, default buggy)');
+    console.log('Kane Loop console on http://localhost:' + PORT + ' (checkout at /index.html; mode via ?mode=buggy|fixed, default fixed)');
   });
 }
 

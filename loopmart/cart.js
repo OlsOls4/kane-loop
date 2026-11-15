@@ -36,7 +36,9 @@
 
   function freshState(mode) {
     return {
-      mode: mode === 'fixed' ? 'fixed' : 'buggy',
+      // Default is fixed: a bare freshState() (no mode) ships the guard.
+      // Buggy is reached only by passing 'buggy' explicitly.
+      mode: mode === 'buggy' ? 'buggy' : 'fixed',
       cart: { mug: 0, hoodie: 0, notebook: 0 },
       discountApplied: false,
       discountCode: null,
@@ -167,9 +169,17 @@
       return { charged: false, order: null, duplicate: false, reason: 'empty-cart' };
     }
     if (state.confirmation) {
-      // Idempotency guard: one charge per checkout, however many times
-      // Pay is clicked. Fixes the double-charge on double-click Pay.
-      return { charged: false, order: state.confirmation, duplicate: true };
+      // Re-armed 15 Nov (Wave 4 fix): the 15 Nov idempotency guard
+      // returned the existing confirmation in BOTH modes, so "Break it"
+      // could no longer re-arm the defect. The guard now applies in
+      // fixed mode only; buggy mode charges again (the seeded
+      // double-charge, exactly as the O2 sweep caught it live:
+      // LOOP-1001 + LOOP-1002).
+      if (state.mode === 'fixed') {
+        return { charged: false, order: state.confirmation, duplicate: true };
+      }
+      // Seeded bug: a second charge for the same checkout.
+      return { charged: true, order: chargeOnce(state), duplicate: true };
     }
     return { charged: true, order: chargeOnce(state), duplicate: false };
   }
@@ -180,9 +190,11 @@
     // even across a "Start new order" reset.
     const mode = state.mode;
     const nextOrderNo = state.nextOrderNo;
+    const orders = state.orders; // G1 fix (15 Nov): the ledger survives "Start new order"
     const fresh = freshState(mode);
     Object.keys(fresh).forEach(function (k) { state[k] = fresh[k]; });
     state.nextOrderNo = nextOrderNo;
+    state.orders = orders; // ledger persists across orders (spec §3.4)
   }
 
   function setMode(state, mode) {

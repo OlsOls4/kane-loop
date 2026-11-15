@@ -36,14 +36,25 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const { execFile } = require('node:child_process');
+const http = require('node:http');
+const https = require('node:https');
 const { parseNdjson } = require('./src/parse-ndjson.js');
-const { createGate, appendJournal, rebuildStateFromJournal } = require('./src/classifier.js');
+const { createGate, appendJournal, rebuildStateFromJournal, creditGuard } = require('./src/classifier.js');
 const { createRunner, preflight, spawnKane } = require('./src/runner.js');
 const { dispatchFix, fixPromptFor } = require('./src/fixer.js');
 const { runSweep, SWEEP_INPUTS } = require('./src/sweep.js');
 
 const ROOT = path.join(__dirname, '..');
-const REPLAY_COMMAND = 'kane-cli testmd run tests/loopmart-checkout_test.md --agent --headless --no-adaptive-heal';
+// The replay replays the COMMITTED _test.md authored by the passing live
+// O1 run (loopmart-o1-core-6, 15 Nov, result_code 100) — NOT the
+// nonexistent tests/loopmart-checkout_test.md the old path named (Wave 4
+// fix, 15 Nov: that file never existed; the real tests live in
+// .testmuai/tests/). The saved test carries its own URL in Step 1, so
+// the replay takes no --url; --timeout 300 matches the measured full-run
+// duration (~180 s — the old 120 s cap would kill a passing replay).
+const REPLAY_TEST_FILE = '.testmuai/tests/loopmart-o1-core-6_test.md';
+const REPLAY_COMMAND = 'kane-cli testmd run ' + REPLAY_TEST_FILE + ' --agent --headless --no-adaptive-heal --bug-detection continue --timeout 300';
 const REPLAY_INPUTS = 'mug+hoodie, KANE10';
 const DEFAULT_FIXTURE = path.join(ROOT, 'kane-watch', 'test', 'fixtures', 'seeded-double-charge.ndjson');
 
@@ -56,7 +67,10 @@ function sha256File(file) {
 }
 
 function testFileHash() {
-  return sha256File(path.join(ROOT, 'tests', 'objectives', 'loopmart-checkout.objective.md'));
+  // Wave 4 fix: hash the _test.md the replay actually executes, not the
+  // objective file — the anti-heal provenance check must guard the file
+  // Kane runs. (The old code hashed tests/objectives/loopmart-checkout.objective.md.)
+  return sha256File(path.join(ROOT, REPLAY_TEST_FILE));
 }
 
 function runId(seq) {
@@ -66,10 +80,23 @@ function runId(seq) {
 }
 
 /** Real Kane arg builder (prep 02): the live run plugs in with zero code change. */
+function cdpArgs() {
+  // In this VM the CLI must attach to a manually launched Chrome (the
+  // CLI passes no proxy flags to the Chrome it launches, and the VM's
+  // egress proxy kills every other route). KANE_CLI_CDP_ENDPOINT is
+  // set by the live-gate operator (http://127.0.0.1:9222); unset on a
+  // clean machine, where the CLI launches its own Chrome.
+  return process.env.KANE_CLI_CDP_ENDPOINT
+    ? ['--cdp-endpoint', process.env.KANE_CLI_CDP_ENDPOINT] : [];
+}
+
 function buildKaneArgs(opts) {
   if (opts.command === 'testmd') {
+    // Replay of the committed _test.md. No --url: the saved test carries
+    // its own URL in Step 1 (the manual replays ran exactly this form).
+    // --timeout 300: a full passing replay takes ~180 s (measured).
     return ['testmd', 'run', opts.testFile, '--agent', '--headless',
-      '--no-adaptive-heal', '--bug-detection', 'continue', '--timeout', '120', '--url', opts.url];
+      '--no-adaptive-heal', '--bug-detection', 'continue', '--timeout', '300'].concat(cdpArgs());
   }
   if (opts.command === 'sweep') {
     // The O2 chaos sweep is a fresh `kane run` of the O2 objective
@@ -77,11 +104,13 @@ function buildKaneArgs(opts) {
     // objective string overrides the file read (used by tests).
     const objective = opts.objective
       || fs.readFileSync(path.join(opts.root || ROOT, 'tests', 'objectives', 'loopmart-chaos-sweep.objective.md'), 'utf8').trim();
+    // --timeout 300: the measured O2 sweep took 180.5 s; the old 120 s
+    // cap would have killed it mid-run.
     return ['run', objective, '--agent', '--headless',
-      '--bug-detection', 'continue', '--timeout', '120', '--url', opts.url];
+      '--bug-detection', 'continue', '--timeout', '300', '--url', opts.url].concat(cdpArgs());
   }
   return ['run', opts.objective, '--agent', '--headless',
-    '--bug-detection', 'continue', '--timeout', '120', '--url', opts.url];
+    '--bug-detection', 'continue', '--timeout', '300', '--url', opts.url].concat(cdpArgs());
 }
 
 function copyDir(src, dest) {
@@ -238,6 +267,58 @@ function writeConsoleData(outPath, journalPath, fix) {
 }
 
 /**
+ * Live checks, run once per save-triggered run after preflight passes
+ * (Wave 4 fix, 15 Nov): `creditGuard` was defined, exported and
+ * unit-tested but never called anywhere, so a dead deploy or an empty
+ * balance would burn ~50 credits per spawn, up to 12 spawns per run.
+ * This reads the measured balance (`kane-cli balance`), sums what the
+ * journal already spent on this claim, enforces the 250-credit reserve
+ * against a 100-credit projected worst-case run, and HEADs the target
+ * URL before the first spawn. Any failure refuses the run with a
+ * journal entry — never a silent hang, never a spawn into a dead
+ * deploy. Injectable via opts.liveChecks so the mocked live-loop tests
+ * never shell out to the real CLI.
+ */
+function defaultLiveChecks(opts, cb) {
+  const reserve = opts.reserve === undefined ? 250 : opts.reserve;
+  const projectedCost = opts.projectedCost === undefined ? 100 : opts.projectedCost;
+  // Spent so far on this claim, from the journal (credits_consumed sum).
+  let spent = 0;
+  try {
+    const text = fs.readFileSync(opts.journalPath, 'utf8');
+    for (const raw of text.split('\n')) {
+      if (!raw.trim()) continue;
+      try {
+        const e = JSON.parse(raw);
+        if (typeof e.credits_consumed === 'number') spent += e.credits_consumed;
+      } catch (err) { /* skip a bad line */ }
+    }
+  } catch (e) { /* no journal yet: spent stays 0 */ }
+  execFile('kane-cli', ['balance'], { timeout: 15000 }, (err, stdout) => {
+    const out = String(stdout || '');
+    const m = /Available credits:\s*([\d.]+)/.exec(out);
+    const balance = m ? parseFloat(m[1]) : null;
+    const guard = creditGuard(balance, spent, reserve, projectedCost);
+    if (!guard.allowed) {
+      cb({ ok: false, balance: balance, reason: 'credit guard refused: ' + guard.reason + ' (balance ' + (balance === null ? 'unknown' : balance) + ', spent ' + spent.toFixed(2) + ', reserve ' + reserve + ', projected ' + projectedCost + ')' });
+      return;
+    }
+    // HEAD the target URL via curl (Node's https does not use the VM's
+    // egress proxy; curl does). -k because the proxy MITMs TLS and the
+    // check is liveness only, not authenticity; --noproxy keeps
+    // localhost direct. A non-2xx/3xx code refuses the run.
+    execFile('curl', ['--noproxy', 'localhost,127.0.0.1', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', '-I', '--max-time', '10', opts.url], { timeout: 15000 }, (cerr, cstdout) => {
+      const code = parseInt(String(cstdout || '').trim(), 10);
+      if (!cerr && code >= 200 && code < 400) {
+        cb({ ok: true, balance: balance, reason: 'within budget (balance ' + balance + ', spent ' + spent.toFixed(2) + ', reserve ' + reserve + '); target reachable (HTTP ' + code + ')' });
+      } else {
+        cb({ ok: false, balance: balance, reason: 'target URL not reachable: ' + (cerr ? cerr.message : 'HTTP ' + (isNaN(code) ? 'no response' : code)) + ' at ' + opts.url });
+      }
+    });
+  });
+}
+
+/**
  * One save-triggered live loop run. Loops until a terminal state:
  *   - `replay` decision -> re-spawn Kane to confirm (confirm-before-fix);
  *   - `fixer` decision  -> dispatch the fix, then re-spawn the replay
@@ -251,10 +332,11 @@ function writeConsoleData(outPath, journalPath, fix) {
  * per-claim 5) plus a hard cap on Kane spawns per save-triggered run.
  *
  * `opts`: { gate, journalPath, root, url, testFileHash,
- *   preflight, spawnKane, sweepMode ('kane' | 'local'), maxSpawns }.
- * `preflight` / `spawnKane` are injectable so the live loop is testable
- * with a mocked Kane (kane-watch/test/run-live-loop.cjs) — no sign-in,
- * no credits, no real run. When `sweepMode` is 'local', the sweep runs
+ *   preflight, spawnKane, sweepMode ('kane' | 'local'), maxSpawns,
+ *   liveChecks }.
+ * `preflight` / `spawnKane` / `liveChecks` are injectable so the live loop
+ * is testable with a mocked Kane (kane-watch/test/run-live-loop.cjs) — no
+ * sign-in, no credits, no real run. When `sweepMode` is 'local', the sweep runs
  * the local deterministic probes (runSweep) instead of a `kane run`
  * and the journal labels the pass LOCAL-SWEEP, never as a Kane run.
  * `done(result)` is called once, with { state, capped? }.
@@ -267,10 +349,11 @@ function runLiveGate(opts, done) {
   const url = o.url || 'http://localhost:8080';
   const spawnFn = o.spawnKane || spawnKane;
   const preflightFn = o.preflight || preflight;
+  const liveChecksFn = o.liveChecks || defaultLiveChecks;
   const sweepMode = o.sweepMode || 'kane';
   const maxSpawns = o.maxSpawns || 12;
   const hash = o.testFileHash
-    || sha256File(path.join(root, 'tests', 'objectives', 'loopmart-checkout.objective.md'));
+    || sha256File(path.join(root, REPLAY_TEST_FILE));
   let seq = 0;
   let spawns = 0;
   let lastWasReplayPass = false;
@@ -303,8 +386,8 @@ function runLiveGate(opts, done) {
   function spawnReplay(next) {
     spawns += 1;
     const rid = 'live-' + Date.now() + '-' + spawns;
-    const args = buildKaneArgs({ command: 'testmd', testFile: 'tests/loopmart-checkout_test.md', url: url });
-    spawnFn({ args: args }, (res) => {
+    const args = buildKaneArgs({ command: 'testmd', testFile: REPLAY_TEST_FILE, url: url });
+    spawnFn({ args: args, timeoutMs: 300000 }, (res) => {
       const parsed = parseNdjson(res.stdout, 'testmd', res.exitCode, res.durationMs);
       const h = gate.handle(parsed, { kind: 'replay', command: REPLAY_COMMAND, runId: rid, testFileHash: hash, inputs: REPLAY_INPUTS });
       // A pass journals as a 'replay' run (the run kind), like dry-run —
@@ -375,7 +458,7 @@ function runLiveGate(opts, done) {
     spawns += 1;
     const rid = 'live-sweep-' + Date.now() + '-' + spawns;
     const args = buildKaneArgs({ command: 'sweep', url: url, root: root });
-    spawnFn({ args: args }, (res) => {
+    spawnFn({ args: args, timeoutMs: 300000 }, (res) => {
       const parsed = parseNdjson(res.stdout, 'run', res.exitCode, res.durationMs);
       const h = gate.handle(parsed, { kind: 'sweep', runId: rid, inputs: SWEEP_INPUTS });
       const accepted = parsed.classification === 'PASS' && h.independentPass && h.independentPass.runId === rid;
@@ -397,7 +480,19 @@ function runLiveGate(opts, done) {
       done({ state: gate.state, started: false });
       return;
     }
-    iterate();
+    // Live checks (Wave 4 fix): credit guard + target reachability run
+    // before the first Kane spawn, so a dead deploy or a balance near
+    // the reserve refuses the run instead of burning credits.
+    liveChecksFn({ url: url, journalPath: journalPath }, (lc) => {
+      if (!lc.ok) {
+        journal({ trigger: 'save', classification: 'DIDNT_START', decision: 'setup', exitCode: 2, verdict: gate.state, notes: 'DID NOT START — live checks failed: ' + lc.reason });
+        console.log('DID NOT START — exit 2 — ' + lc.reason);
+        done({ state: gate.state, started: false });
+        return;
+      }
+      console.log('live checks OK — ' + lc.reason);
+      iterate();
+    });
   });
 }
 
@@ -464,4 +559,4 @@ if (require.main === module) {
   process.exitCode = main();
 }
 
-module.exports = { buildKaneArgs: buildKaneArgs, dryRun: dryRun, runLiveGate: runLiveGate, REPLAY_COMMAND: REPLAY_COMMAND, REPLAY_INPUTS: REPLAY_INPUTS, SWEEP_INPUTS: SWEEP_INPUTS };
+module.exports = { buildKaneArgs: buildKaneArgs, dryRun: dryRun, runLiveGate: runLiveGate, REPLAY_COMMAND: REPLAY_COMMAND, REPLAY_TEST_FILE: REPLAY_TEST_FILE, REPLAY_INPUTS: REPLAY_INPUTS, SWEEP_INPUTS: SWEEP_INPUTS };
