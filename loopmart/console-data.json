@@ -1,0 +1,84 @@
+{
+  "generated": "2026-11-15T21:08:20.115Z",
+  "mode": "dry-run",
+  "verdict": "EXAMPLE",
+  "credits": {
+    "spent": 0,
+    "balance": null,
+    "note": "0 credits — no live runs yet. Balance unknown — kane-cli balance not run."
+  },
+  "exampleRun": {
+    "run_id": "EXAMPLE-001",
+    "trigger": "seeded example",
+    "verdict": "EXAMPLE",
+    "failingStep": "Verify the order ledger contains exactly one order",
+    "failingStepLabel": "the ledger check failed",
+    "remark": "Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Loop Mug is 8 (expected 9) and for Debug Hoodie is 8 (expected 9). The checkout was charged twice.",
+    "exitCode": null,
+    "credits": null,
+    "note": "EXAMPLE RUN — seeded, not live. Press Break it to attempt a live run."
+  },
+  "runs": [
+    {
+      "run_id": "20261115-210820-5",
+      "trigger": "dry-run",
+      "kind": "DRY-RUN",
+      "classifier": "PASS",
+      "decision": "sweep",
+      "status": "passed",
+      "exit_code": 0,
+      "verdict": "LOOP_VERIFIED",
+      "notes": "dry-run: chaos sweep passed (core 6/6 probes); known-issue G1 excluded from the pass"
+    },
+    {
+      "run_id": "20261115-210820-4",
+      "trigger": "dry-run",
+      "kind": "DRY-RUN",
+      "classifier": "PASS",
+      "decision": "replay",
+      "status": "passed",
+      "exit_code": 0,
+      "verdict": "PROVISIONAL_DONE",
+      "notes": "dry-run: replay outcome derived from patched copy (orders=1, A1-A5={\"A1\":true,\"A2\":true,\"A3\":true,\"A4\":true,\"A5\":true})"
+    },
+    {
+      "run_id": "20261115-210820-3",
+      "trigger": "dry-run",
+      "kind": "DRY-RUN",
+      "classifier": "APP_BUG",
+      "decision": "fixer",
+      "status": null,
+      "exit_code": null,
+      "verdict": "PROVISIONAL_DONE",
+      "notes": "dry-run: fix applied: double-charge-idempotency-guard (2 files, within the 30-line contract)"
+    },
+    {
+      "run_id": "20261115-210820-2",
+      "trigger": "dry-run",
+      "kind": "DRY-RUN",
+      "classifier": "APP_BUG",
+      "decision": "fixer",
+      "status": "failed",
+      "exit_code": 1,
+      "verdict": "PROVISIONAL_DONE",
+      "notes": "dry-run: second identical red, fixer dispatched"
+    },
+    {
+      "run_id": "20261115-210820-1",
+      "trigger": "dry-run",
+      "kind": "DRY-RUN",
+      "classifier": "APP_BUG",
+      "decision": "replay",
+      "status": "failed",
+      "exit_code": 1,
+      "verdict": "PROVISIONAL_DONE",
+      "notes": "dry-run: seeded double-charge fixture; first red, confirm-before-fix replay"
+    }
+  ],
+  "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice.",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing.",
+    "loopmart/app.js — Pay button disabled while Processing."
+  ],
+  "fixtureNote": "FIXTURE — synthetic, not a live run."
+}

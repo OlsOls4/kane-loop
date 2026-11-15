@@ -47,7 +47,7 @@ Three cards, each with name, price, and one `Add to cart` button. After adding, 
   - Item lines, discount applied, `Total paid £45.00`
   - The line `No money moved — this is a test payment`
   - `Start new order` (resets to an empty cart) and `View run` (scrolls to the Console)
-- **Double-click / retry guard is the seeded bug's territory — see §5.** In correct behaviour, a second click on Pay while processing, or a retry after a confirmation, must NOT create a second charge.
+- **Double-click / retry guard is the seeded bug's territory — see §5.** In correct behaviour, a second click on Pay while processing must NOT create a second charge. A retry after a confirmation is unreachable in a real browser (the pay section is hidden once a confirmation shows) and the handler ignores it — so double-click-during-processing is the canonical trigger (15 Nov correction, principal engineer #10).
 
 ### 3.4 Order ledger (persistent money — Wave 2 judges' fix)
 Below the confirmation (same left column, or a clearly labelled section a judge can see without navigating):
@@ -75,7 +75,7 @@ A run with no verify/assert gets no replayable pass/fail (AGENTS.md) — every o
 
 ## 5. Seeded regression (exactly ONE seeded bug — Wave 2 change)
 
-**Seeded bug (changed from Wave 1 on researchers' evidence): double-charge on double-click Pay / retry.**
+**Seeded bug (changed from Wave 1 on researchers' evidence): double-charge on double-click Pay.** Canonical trigger: double-click during the ~1s Processing state. A retry after a confirmation is NOT a trigger — unreachable in a real browser (15 Nov correction, principal engineer #10).
 
 - **Behaviour:** if Pay is clicked twice in quick succession (or the payment is retried after the first charge has been taken), the order is charged twice: the ledger shows TWO orders for the same checkout, stock for Mug and Hoodie decrements by 2 each, and a second confirmation is issued. The cart total itself stays correct (£45.00) — the failure is in the *consequence* of paying, not in the arithmetic.
 - **Why this bug, not Wave 1's double-discount (£40.00):** TestMu's own 3 Nov 2026 Codex review already demoed a discount/quote-total bug in that shape ("Cold brew 1L, 10 units, Total: $40.50, 10% off"). Seeding the same shape invites a "vendor's own example" discount. Double-charge is a different money failure, is not the vendor's example, and is only detectable through the persistent ledger — which is exactly why the ledger exists.

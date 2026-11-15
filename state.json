@@ -1,0 +1,16 @@
+{
+  "mode": "dry-run",
+  "derivedFrom": "journal.jsonl",
+  "attemptsBySignature": {
+    "246c16b1223560e6": 1
+  },
+  "attemptsPerClaim": 1,
+  "pendingReds": [],
+  "state": "LOOP_VERIFIED",
+  "replayPass": {
+    "runId": "dryrun-replay-1"
+  },
+  "independentPass": {
+    "runId": "dryrun-sweep-1"
+  }
+}

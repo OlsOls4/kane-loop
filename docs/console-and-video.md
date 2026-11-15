@@ -2,6 +2,8 @@
 
 **Status:** SPEC ONLY — no code before 12 Nov. Console spec is frozen with `01` (12 Nov); video shot list is frozen 17 Nov (after Council Wave 3).
 
+**Correction 15 Nov 2026 (council videographer):** the shot table in §3 assumes a Console and live Kane footage that do not exist yet, so it cannot be filmed honestly as written. The deliverable is the honest fallback cut in `docs/video-script.md` (full ~375-word narration, 2:50 + 5s buffer), with Tier B drop-ins in `docs/video-tier-b-dropins.md` if a live run lands before 18 Nov. The shot table below stays as the Tier B target only. Two errors in this doc are corrected and must not be repeated: (1) the failing step is **step 6, not step 4** — narration and captions say "the ledger check failed", never a step number; (2) fixture numbers (credits 12/14, durations, `example.invalid` test URLs, illustrative "312/1,000 credits") are never shown as real — any fixture on screen carries an on-screen "FIXTURE — synthetic, not a live run" label.
+
 ## 1. Loop Console — one-screen spec (Wave 2 UI/UX: IMPROVE over Wave 1)
 
 **Wave 1's layout fails the judge tests as worded** (status strip *underneath* the checkout, 5-run timeline below that — on a judge's 1366×768 laptop the timeline is below the fold, so failing step + screenshot + fix cannot be found in <15s without scrolling and hunting). The loop is the product and the checkout is only the victim — **the strip must lead, not follow.**
@@ -28,7 +30,7 @@
 |---|---|
 | WATCHING | `● WATCHING — no changes, waiting for a save` |
 | RUNNING | `▶ RUNNING — Kane step 2 of 4: Apply KANE10…` (step name updates live) |
-| FAIL | `✕ FAIL — exit 1 — Step 4 Pay: ledger shows 2 orders, expected 1` (failing step + verbatim numbers) |
+| FAIL | `✕ FAIL — exit 1 — the ledger check failed: ledger shows 2 orders, expected 1` (failing step + verbatim numbers; never a step number — the fixture's failing step is step 6, not step 4) |
 | FIXING | `↻ FIXING — attempt 1 of 3 — patching pay handler…` |
 | PASS | `✓ PASS — exit 0 — all 4 steps passed` |
 | HUMAN-BLOCKED | `⏸ HUMAN-BLOCKED — 3 attempts used, needs a person` |
@@ -41,7 +43,7 @@ Reverse-chronological, latest on top. Each row is a real `<button>` showing: run
 
 ### 1.4 Latest-run detail card (always visible, never empty)
 
-Failing step name; Kane's verbatim `remark` quoted (1–2 lines, expandable); failure screenshot, circled, with caption `Kane's screenshot — step 4`; fix diff ≤10 lines naming one file; before/after ledger state (2 orders → 1 order, stock −2 → −1); rerun result; `run_id` and Test Manager `test_url` link.
+Failing step name; Kane's verbatim `remark` quoted (1–2 lines, expandable); failure screenshot, circled, with caption `Kane's screenshot — the ledger check`; fix diff ≤10 lines naming one file; before/after ledger state (2 orders → 1 order, stock −2 → −1); rerun result; `run_id` and Test Manager `test_url` link.
 
 ### 1.5 `Break it` and `Replay last failure`
 
@@ -72,7 +74,7 @@ Wave 1's shape is kept but tightened (UI/UX Wave 2): its FAIL (35s) and FIX (45s
 |---|---|---|
 | 0:00–0:10 | Hook, in the browser: click Pay twice → ledger shows 2 orders, stock −2. | "My coding agent just shipped this checkout. It looks done. It isn't — and nobody checked." On-screen: `2 orders, 1 checkout — charged twice`. |
 | 0:10–0:25 | One sentence + strip appears; one install command visible. | "Kane Loop: a watcher any agent can install in one command, that blocks on a diff, not on a claim." Command on screen ≥18pt. |
-| 0:25–0:55 | FAIL: labelled jump cut (`Jump cut — 41s elapsed`), Kane driving the checkout; cropped `run_end` only (`status: failed`, exit 1); failure screenshot, circled, 3s. | "Kane ran the checkout. Step 4 failed — the same order was charged twice." |
+| 0:25–0:55 | FAIL: labelled jump cut (`Jump cut — 41s elapsed`), Kane driving the checkout; cropped `run_end` only (`status: failed`, exit 1); failure screenshot, circled, 3s. | "Kane ran the checkout. The ledger check failed — the same order was charged twice." |
 | 0:55–1:35 | FIX: failing `remark` quoted on screen; one-file diff highlighted; strip shows FIXING → RUNNING. | "No human in between. The loop hands Kane's exact failure to the coder — one patch, no test edits." |
 | 1:35–2:15 | GREEN: same flow, confirmation `Total paid £45.00`, ledger 1 order; cropped `run_end` (`status: passed`, exit 0, duration + credits); evidence pack + `test_url`, 3s. | "Same test, same checkout. Green — and Kane checked it a second, independent way." |
 | 2:15–2:45 | Ship: live URL + repo + one run command on a clean end card, readable ≥5s; credits line (measured figures, e.g. `312 / 1,000 credits`). | "Try it: one link, one command. Break it yourself." |

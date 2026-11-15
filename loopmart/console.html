@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kane Loop — LoopMart console</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 16px 24px; color: #f1f5f9; background: #1e293b; }
+  h1 { font-size: 30px; font-weight: 800; margin: 0 0 4px; color: #fff; display: flex; align-items: center; gap: 12px; }
+  h1::before { content: "K"; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; background: #ff6b4a; color: #fff; border-radius: 12px; font-size: 26px; font-weight: 800; }
+  h2 { font-size: 20px; font-weight: 800; margin: 0 0 10px; color: #fff; }
+  h3 { font-size: 15px; font-weight: 800; margin: 16px 0 8px; color: #cbd5e1; }
+  p { margin: 4px 0; }
+  .claim { font-size: 17px; margin: 0 0 4px; color: #cbd5e1; }
+  .muted { color: #94a3b8; }
+  code { background: #334155; color: #fde68a; padding: 1px 6px; border-radius: 6px; font-size: 14px; }
+  .skip-link { position: absolute; left: -9999px; top: 0; background: #fff; color: #1e293b; padding: 8px 12px; z-index: 10; border-radius: 0 0 8px 8px; font-weight: 700; }
+  .skip-link:focus { left: 8px; top: 8px; }
+  :focus-visible { outline: 3px solid #ff6b4a; outline-offset: 2px; }
+  #strip { position: sticky; top: 0; z-index: 5; background: #0f172a; color: #fff; border-radius: 12px; border-left: 6px solid #ff6b4a; padding: 14px 18px; font-size: 17px; font-weight: 700; margin: 12px 0; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+  #strip .sub { display: block; font-weight: 400; font-size: 14px; color: #94a3b8; margin-top: 2px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+  button { font-size: 15px; font-weight: 700; padding: 10px 18px; cursor: pointer; border-radius: 999px; border: 2px solid #64748b; background: transparent; color: #f1f5f9; }
+  button:hover { border-color: #ff6b4a; }
+  button.primary { background: linear-gradient(180deg, #ff6b4a, #f04e30); color: #fff; border-color: transparent; font-size: 16px; padding: 12px 22px; box-shadow: 0 6px 16px rgba(240, 78, 48, .35); }
+  button.primary:hover { background: linear-gradient(180deg, #f0522e, #e0401f); }
+  button:disabled { opacity: .55; cursor: default; }
+  #credits-line { margin-left: auto; font-size: 14px; color: #94a3b8; }
+  #example-banner { border: 2px dashed #f59e0b; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-weight: 700; color: #fde68a; background: rgba(245, 158, 11, .12); }
+  .columns { display: flex; gap: 20px; align-items: flex-start; }
+  .checkout { flex: 1 1 55%; min-width: 0; }
+  .console-col { flex: 1 1 45%; min-width: 0; }
+  iframe#loopmart-frame { width: 100%; height: 78vh; min-height: 620px; border: 1px solid #475569; border-radius: 14px; background: #fff7e6; }
+  #latest-run { border: 1px solid #3b4a63; border-radius: 14px; padding: 16px; background: #2a3a52; }
+  #latest-run .verdict { font-size: 26px; font-weight: 800; color: #fff; }
+  #latest-run blockquote { margin: 10px 0; padding: 10px 14px; background: #1e293b; border-left: 4px solid #ff6b4a; border-radius: 0 8px 8px 0; color: #e2e8f0; font-style: italic; }
+  #latest-run pre { background: #0f172a; color: #a5f3fc; padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  #timeline { display: flex; flex-direction: column; gap: 8px; counter-reset: tl; }
+  .timeline-row { display: flex; align-items: center; gap: 12px; counter-increment: tl; text-align: left; width: 100%; font-size: 14px; font-weight: 600; padding: 10px 14px; background: #2a3a52; border: 1px solid #3b4a63; color: #e2e8f0; border-radius: 12px; }
+  .timeline-row::before { content: counter(tl); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #0d9488; color: #fff; font-size: 14px; font-weight: 800; }
+  .timeline-row[aria-pressed="true"] { border: 2px solid #ff6b4a; background: #ff6b4a; color: #fff; }
+  .timeline-row[aria-pressed="true"]::before { background: #fff; color: #f04e30; }
+  details#ndjson { margin-top: 16px; border: 1px solid #3b4a63; border-radius: 14px; padding: 12px 14px; background: #2a3a52; }
+  details#ndjson summary { font-weight: 700; color: #fff; cursor: pointer; }
+  details#ndjson pre { max-height: 240px; overflow: auto; background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 12px; }
+  .label { font-weight: 700; color: #fff; }
+  @media (max-width: 900px) {
+    body { padding: 12px; }
+    .columns { flex-direction: column; }
+    .checkout, .console-col { flex-basis: auto; width: 100%; }
+    iframe#loopmart-frame { height: 70vh; min-height: 560px; }
+    #credits-line { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#console">Skip to Loop Console</a>
+<header>
+  <h1>Kane Loop — LoopMart</h1>
+  <p class="claim">A watcher any agent can install in one command, that blocks on a diff, not on a claim.</p>
+  <p class="muted">Demo victim: LoopMart, a tiny no-login checkout. Seeded bug disclosed. Install: <code>npm install -g github:OlsOls4/kane-loop</code> (bin entry <code>kane-watch</code>).</p>
+</header>
+
+<div id="strip" aria-live="polite">GREEN (substance): fresh O1 + independent O2 pass (result_code 100).
+  <span class="sub">Replay leg unproven — Kane analyzer fault (3 attempts). Live runs below.</span>
+</div>
+
+<div class="toolbar">
+  <button class="primary" id="break-it-console" disabled>Break it — apply the double-charge bug</button>
+  <button id="replay-last" disabled>Replay last failure — local reproduction, no Kane run</button>
+  <span id="credits-line">476.53 credits spent 15 Nov (10,200 → 9,723.47 balance).</span>
+</div>
+
+<div id="example-banner">LIVE — 10 completed Kane CLI runs, 15 Nov 2026. Latest: O2 sweep green (result_code 100). Replay leg unproven — Kane analyzer fault, not an app defect.</div>
+
+<div class="columns">
+  <section class="checkout" aria-label="LoopMart checkout">
+    <h2>LoopMart checkout</h2>
+    <iframe id="loopmart-frame" src="index.html" title="LoopMart checkout"></iframe>
+  </section>
+
+  <section class="console-col" id="console" aria-label="Loop Console">
+    <h2>Loop Console</h2>
+    <div id="latest-run" aria-live="polite"></div>
+    <h3>Run timeline</h3>
+    <div id="timeline"></div>
+    <details id="ndjson">
+      <summary>Raw NDJSON and logs</summary>
+      <p class="muted" id="ndjson-label">LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full NDJSON is in evidence/o2-green-2026-11-15.ndjson.</p>
+      <pre id="ndjson-body">Loading…</pre>
+      <p><button id="copy-ndjson">Copy</button></p>
+    </details>
+  </section>
+</div>
+
+<script src="console.js"></script>
+</body>
+</html>

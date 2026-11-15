@@ -1,0 +1,8 @@
+{"type":"stream_start","session_id":"sess-seeded-001"}
+{"step":"Go to the LoopMart page","status":"done","remark":"Page loaded, three products visible, cart empty."}
+{"step":"Click Add to cart on Loop Mug","status":"done","remark":"Cart shows 1 Loop Mug, subtotal £15.00."}
+{"step":"Click Add to cart on Debug Hoodie","status":"done","remark":"Subtotal £50.00."}
+{"step":"Apply discount code KANE10","status":"done","remark":"Discount minus £5.00, total £45.00."}
+{"step":"Click the Pay button","status":"done","remark":"Confirmation shows Total paid £45.00, order LOOP-1001."}
+{"step":"Verify the order ledger contains exactly one order","status":"failed","remark":"Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Loop Mug is 8 (expected 9) and for Debug Hoodie is 8 (expected 9). The checkout was charged twice."}
+{"type":"run_end","status":"failed","summary":"Checkout flow failed: the ledger shows two orders for one checkout.","one_liner":"Double charge: 2 ledger orders for one checkout.","reason":"Assertion failed at ledger verification step.","duration":54000,"credits_consumed":14,"final_state":{"total":"£45.00"},"test_url":"https://example.invalid/test-manager/loopmart-checkout","session_dir":"/tmp/kane/sess-seeded-001","result_code":740,"verdict":{"confirmed_bug":true,"type":"double_charge","severity":"high"}}

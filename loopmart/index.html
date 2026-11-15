@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoopMart — a tiny checkout</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0 auto; padding: 24px; color: #2b1a12; background: #fff7e6; max-width: 960px; }
+  h1 { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 4px; color: #2b1a12; display: flex; align-items: center; gap: 12px; }
+  h1::before { content: "🛍"; display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; flex: none; background: #ff6b4a; border-radius: 50%; font-size: 30px; box-shadow: 0 4px 12px rgba(255, 107, 74, .45); }
+  h2 { font-size: 22px; font-weight: 800; margin: 28px 0 12px; color: #2b1a12; }
+  h3 { font-size: 18px; font-weight: 800; color: #2b1a12; }
+  p { margin: 6px 0; }
+  .products { display: flex; gap: 16px; flex-wrap: wrap; }
+  .product { border: 1px solid #f5e3c2; border-radius: 18px; padding: 18px 16px 16px; width: 220px; background: #fffdf5; box-shadow: 0 8px 20px rgba(180, 120, 40, .12); display: flex; flex-direction: column; gap: 6px; }
+  .product strong { font-size: 21px; font-weight: 800; order: 1; }
+  .product .price { font-size: 26px; font-weight: 800; color: #2b1a12; order: 2; }
+  .product::before { order: 3; font-size: 64px; line-height: 1.1; text-align: center; margin: 6px 0; }
+  .product:nth-child(1)::before { content: "☕"; }
+  .product:nth-child(2)::before { content: "🧥"; }
+  .product:nth-child(3)::before { content: "📓"; }
+  .product .muted { order: 4; }
+  .product button { order: 5; margin-top: auto; width: 100%; background: #ff6b4a; border-color: transparent; color: #fff; padding: 12px 18px; }
+  .product button:hover { background: #f0522e; border-color: transparent; }
+  .product .stepper { order: 6; display: flex; gap: 8px; justify-content: center; }
+  button { font-size: 15px; font-weight: 700; padding: 10px 18px; cursor: pointer; border-radius: 999px; border: 2px solid #e8cfa5; background: #fffdf5; color: #2b1a12; }
+  button:hover { border-color: #ff6b4a; }
+  button.primary { background: linear-gradient(180deg, #ff6b4a, #f04e30); color: #fff; border-color: transparent; font-size: 21px; padding: 18px 24px; width: 100%; box-shadow: 0 8px 20px rgba(240, 78, 48, .35); }
+  button.primary:hover { background: linear-gradient(180deg, #f0522e, #e0401f); }
+  button:disabled { opacity: .55; cursor: default; }
+  :focus-visible { outline: 3px solid #ff6b4a; outline-offset: 2px; }
+  .skip-link { position: absolute; left: -9999px; top: 0; background: #2b1a12; color: #fff; padding: 8px 12px; z-index: 10; border-radius: 0 0 8px 8px; }
+  .skip-link:focus { left: 8px; top: 8px; }
+  .total { font-size: 26px; font-weight: 800; display: flex; justify-content: space-between; align-items: baseline; background: #fffdf5; border: 1px solid #f5e3c2; border-radius: 14px; padding: 14px 18px; }
+  .total #total { color: #e63e2b; font-size: 40px; }
+  #cart-lines p { background: #fffdf5; border: 1px solid #f5e3c2; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+  #discount { color: #15803d; font-weight: 800; }
+  #subtotal { font-weight: 700; }
+  .table-scroll { overflow-x: auto; border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 420px; background: #fffdf5; }
+  th { background: #ffedd5; color: #7c2d12; }
+  th, td { border: 1px solid #f5e3c2; padding: 8px 10px; text-align: left; font-size: 14px; }
+  tbody tr:nth-child(even) { background: #fff7e6; }
+  input[type=text] { font-size: 15px; padding: 10px 12px; border: 2px solid #e8cfa5; border-radius: 12px; background: #fffdf5; color: #2b1a12; }
+  input[type=text]:focus { border-color: #ff6b4a; outline: none; }
+  .muted { color: #8a6d5a; }
+  .msg { color: #b91c1c; font-weight: 700; }
+  .ok { color: #15803d; font-weight: 700; }
+  #confirmation { border: 2px solid #16a34a; background: #f0fdf4; border-radius: 16px; padding: 16px; margin-top: 12px; }
+  #confirmation h3 { color: #166534; }
+  #charge-flag { font-weight: 800; color: #b91c1c; }
+  .seeded { margin-top: 28px; border: 2px dashed #f59e0b; border-radius: 16px; padding: 16px; background: #fffdf5; }
+  #break-it { background: #ff6b4a; border-color: transparent; color: #fff; }
+  #break-it:hover { background: #f0522e; }
+  .stepper button { padding: 2px 10px; border-radius: 999px; }
+  #stock-list { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  #stock-list li { display: inline-block; border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 14px; color: #fff; }
+  #stock-list li:nth-child(1) { background: #f59e0b; }
+  #stock-list li:nth-child(2) { background: #ef4444; }
+  #stock-list li:nth-child(3) { background: #0d9488; }
+  #demo-add { background: transparent; }
+  @media (max-width: 900px) {
+    body { padding: 12px; }
+    h1 { font-size: 32px; }
+    .product { width: 100%; }
+    .total { font-size: 24px; }
+    .total #total { font-size: 32px; }
+    button.primary { width: 100%; font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to checkout</a>
+<main id="main">
+<h1>LoopMart</h1>
+<p class="muted">A tiny checkout. Test payment — no money moves.</p>
+<noscript><p class="msg">LoopMart needs JavaScript: the products, cart, and ledger are rendered by script.</p></noscript>
+
+<h2>Products</h2>
+<div class="products" id="products"></div>
+
+<h2>Cart</h2>
+<p id="cart-empty">Cart is empty — add a product to start.</p>
+<div id="cart-lines"></div>
+<p>Subtotal: <span id="subtotal">£0.00</span></p>
+<p>
+  <label>Discount code <input type="text" id="discount-code" placeholder="KANE10" autocomplete="off"></label>
+  <button id="apply-discount">Apply</button>
+  <span id="discount-msg" role="status"></span>
+</p>
+<p>Discount (KANE10): <span id="discount">£0.00</span></p>
+<p class="total">Total: <span id="total">£0.00</span></p>
+<p><button id="demo-add">Demo: add Mug + Hoodie</button></p>
+
+<h2>Pay</h2>
+<div id="pay-section">
+  <p><label>Name <input type="text" id="pay-name" value="Test Buyer"></label></p>
+  <p><label>Card <input type="text" id="pay-card" value="4242 4242 4242 4242"></label></p>
+  <p><label>Expiry <input type="text" id="pay-expiry" value="12/30"></label>
+     <label>CVC <input type="text" id="pay-cvc" value="123"></label></p>
+  <p><button class="primary" id="pay-button">Pay £0.00 — test, no money moves</button></p>
+  <p id="pay-status" role="status"></p>
+</div>
+<div id="confirmation" hidden tabindex="-1" aria-live="polite">
+  <h3>Order confirmed</h3>
+  <p id="charge-flag" role="alert" hidden></p>
+  <p>Order number: <strong id="conf-order"></strong></p>
+  <div id="conf-lines"></div>
+  <p id="conf-total"></p>
+  <p class="muted">No money moved — this is a test payment</p>
+  <p><button id="new-order">Start new order</button>
+     <button id="view-run">Seeded bug controls</button></p>
+  <p id="g1-note" class="muted">Known defect G1 — Kane's next catch: “Start new order” wipes the
+  ledger (spec §3.4 — every completed order stays visible). Left in deliberately so Kane has a
+  real bug to catch; the loop's fixer has a one-line strategy for it.</p>
+</div>
+
+<h2>Order ledger</h2>
+<p id="ledger-summary" aria-live="polite" class="muted">No orders yet.</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Order</th><th>Items</th><th>Discount</th><th>Total</th><th>State</th></tr></thead>
+  <tbody id="ledger-body"><tr><td colspan="5" class="muted">No orders yet.</td></tr></tbody>
+</table>
+</div>
+
+<h2>Stock</h2>
+<ul id="stock-list"></ul>
+
+<div class="seeded" id="seeded-box">
+  <h3>Seeded bug control (disclosed as seeded)</h3>
+  <p id="bug-status"></p>
+  <p><button id="break-it">Break it</button>
+     <button id="reset-bug">Reset</button></p>
+  <p class="muted">“Break it” arms the disclosed seeded regression (double-charge on
+  double-click Pay during Processing) and resets the store. “Reset” restores correct behaviour
+  (one charge per checkout) and resets the store. Mode can also be set with
+  <code>?mode=buggy</code> or <code>?mode=fixed</code>.</p>
+</div>
+</main>
+
+<script src="cart.js"></script>
+<script src="app.js"></script>
+<script>window.loopMart = initLoopMart(document);</script>
+</body>
+</html>

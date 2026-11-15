@@ -1,6 +1,8 @@
 # Kane Objectives — Verbatim (frozen with `01`, 12 Nov)
 
 **Status:** SPEC ONLY — no runs before 12 Nov. Objectives are natural-language text for `kane-cli run` / `testmd run`. They are the test suite: edit an objective and you have changed a test, which is a test bug unless the spec changed first (see `01` §7).
+**Correction 15 Nov 2026 (principal engineer #10):** the seeded bug's canonical trigger is **double-click Pay during the Processing state only**. A retry after a confirmation is unreachable in a real browser (the pay section is hidden once a confirmation shows) — the earlier wording that listed retry as a trigger is withdrawn. The verbatim objectives live in `tests/objectives/` (`loopmart-checkout.objective.md`, `loopmart-chaos-sweep.objective.md`).
+
 **URL placeholder:** every objective below starts with `<LOOPMART_URL>`. Substitute the canonical URL at kickoff (12 Nov): the **loop** runs against the local preview server rebuilt per attempt; the **gate/final verification** runs against the canonical deployed URL (see `03` §9). Never commit an objective with `localhost` hard-coded, and never commit a real deployed URL before the deploy exists — keep `<LOOPMART_URL>` in the committed `_test.md` files and resolve it from config at run time (or pass `--url`).
 
 ## AGENTS.md rules every objective and every run must follow

@@ -5,7 +5,9 @@
 
 ## 1. What the loop is (and is not)
 
-**What it is:** `kane-watch` — a file watcher / save hook that fires Kane CLI, parses NDJSON, classifies the result, and (only for a genuine app bug, confirmed twice) hands a minimal fix prompt to the coding agent. The agent's "done" is provisional (`PROVISIONAL_DONE`); only the separate verifier process can write `LOOP_VERIFIED`, after replay + independent sweep. Cap: 3 attempts per failure signature AND 5 attempts per claim; then a visible human-blocked state. Anti-cheat: a fix that deletes an assertion, hard-codes a value, or edits a test is rejected and rolled back.
+**What it is:** `kane-watch` — a file watcher / save hook that fires Kane CLI, parses NDJSON, classifies the result, and (only for a genuine app bug, confirmed twice) applies a validated reference patch for the bug class itself — the loop is the agent side. The fixed-format FIX PROMPT is the audit record of the failure the patch addresses (failing step, remark, allow-listed files), emitted to stdout and the journal; it is not sent to an external agent. The agent's "done" is provisional (`PROVISIONAL_DONE`); only the separate verifier process can write `LOOP_VERIFIED`, after replay + independent sweep. Cap: 3 attempts per failure signature AND 5 attempts per claim; then a visible human-blocked state. Anti-cheat: a fix that deletes an assertion, hard-codes a value, or edits a test is rejected and rolled back.
+
+**15 Nov correction — fixer honesty.** The earlier draft of this section said the gate "hands a minimal fix prompt to the coding agent". No external agent is ever invoked: the loop's fixer is a bounded reference patcher (strategies: double-charge idempotency guard, G1 ledger-preserve) and the loop applies the patch itself, validated by the fix contract. The FIX PROMPT is the fixed-format failure record the patcher consumes — and the audit trail — not a handoff.
 
 **What it is not:** a Claude Code Stop-hook (GuardianKane's mechanism — do not copy it; `kane-watch` is agent-agnostic: on save / on git diff, any agent/stack, which is what Luma's "any agent, any stack" invites). Not a dashboard product. Not a PRD tracker, scope guard, secret scanner, or file locker (GuardianKane features — do not ship them).
 
@@ -41,21 +43,37 @@ Inputs, in order: process exit code, presence/absence of a terminal event, `run_
 classify(exit, terminal, run_end):
   if exit == 2 or (exit != 0 and terminal is None and duration < 5s):
       return DIDNT_START        // sign-in/config/no URL/Chrome/network
-  if exit == 3 or terminal is None:          // timeout / killed / truncated
-      return FLAKE_OR_TIMEOUT   // retry once, no code change; 2nd time -> human-blocked
+  if terminal is None:
+      if exit == 1 and stream is clean (no corrupt lines):
+          return DIDNT_START    // clean exit-1 with no terminal: nothing ran
+      if exit == 1 and stream is truncated (corrupt lines):
+          return FLAKE_OR_TIMEOUT
+      if exit == 3 and command is testrun:
+          return INCONCLUSIVE   // exit 3 is cancelled-only for testrun
+      return FLAKE_OR_TIMEOUT   // timeout / killed / truncated
   if exit == 1:
       if run_end.reason matches upload/evidence/seal failure
          or status == failed and no failing step recorded:
           return DIDNT_START    // Wave 1's known trap: exit 1 != app bug
-      if failing step is ambiguous / unresolved_variables
-         or objective references a missing element:
+      if run_end.status == passed and (result_code == 740 or verdict.confirmed_bug):
+          return INCONCLUSIVE   // contradictory data — never APP_BUG
+      if failing step is ambiguous / unresolved_variables:
           return TEST_BUG
+      if failing step remark says "could not find" / "element not found"
+         and no 740/verdict confirms a bug:
+          return INCONCLUSIVE   // an app bug removing the Pay button produces exactly this remark
       return APP_BUG
   if exit == 0 and terminal.status == passed: return PASS
   else: return INCONCLUSIVE     // exit 0 with no terminal event is NOT a pass
 ```
 
+**15 Nov correction (spec/code drift, user panel #3).** The earlier draft of this section said exit-1-with-no-terminal was `DIDNT_START` unconditionally, and the parser returned `FLAKE_OR_TIMEOUT` for it. The rule above is the implemented one: clean stream → `DIDNT_START`, truncated stream → `FLAKE_OR_TIMEOUT`. The `done` event is an assurance-stream terminal only — on `run`/`testmd`/`testrun` it is the wrong terminal type, so it classifies `INCONCLUSIVE` (correct as written in §11).
+
 **Wave 2 correction — trust the verdict, not the exit code.** Exit codes lie: a replay can exit 1 while its final `run_end` reports `status: 'passed'`; a sweep can exit 0 while its verdict reports a confirmed bug. The classifier must read `run_end.status` / `result_code` / `verdict` **over** the process exit code, and the gate verdict is the structured verdict, not the exit code. With `--bug-detection`, a confirmed product bug arrives as **`result_code` 740 with a `verdict` object** — 740 is the primary "real bug" signal.
+
+**15 Nov correction — status and verdict together (Judge B 2b).** A 740 / `verdict.confirmed_bug` must NOT force `APP_BUG` when `run_end.status` is `passed` — that combination is contradictory data and classifies `INCONCLUSIVE`. Trust status + verdict together: `failed` + 740/confirmed → `APP_BUG`; `passed` alone → `PASS`; `passed` + 740/confirmed → `INCONCLUSIVE`.
+
+**15 Nov correction — missing-element remarks (Judge B 2a).** A failing-step remark containing "could not find" / "element not found" must NOT auto-route to `TEST_BUG`: an app bug that removes or renames the Pay button produces exactly that remark. Route on `result_code`/verdict first; treat missing-element failures as `INCONCLUSIVE` (human) unless a 740/verdict confirms a bug. `TEST_BUG` is for genuinely ambiguous objectives / `unresolved_variables` only.
 
 **Routing:**
 - `DIDNT_START` → setup fix only, never to the coder, no attempt consumed.
@@ -63,6 +81,9 @@ classify(exit, terminal, run_end):
 - `TEST_BUG` → fix the `_test.md`/objective only, by a human-approved edit, counted separately from app attempts.
 - `APP_BUG` → fixer, and **only `APP_BUG` consumes an app attempt**.
 - `INCONCLUSIVE` → never a pass, never a fix; log and human-blocked if it repeats.
+  **15 Nov correction (principal engineer #6):** the first `INCONCLUSIVE` is treated like a
+  flake — log it and replay once; block on the second consecutive one. The earlier
+  implementation blocked on the first, contradicting this design.
 
 **Confirm-before-fix (Wave 2 engineers' correction — load-bearing):** first red on a signature triggers an immediate zero-credit replay (O3 in `02`) *before* any code change. Only a second identical red dispatches the fixer. This is the flake filter; it costs nothing on replay and is what stops a flaky red from causing a spurious "fix".
 
@@ -78,24 +99,47 @@ limits: diff ≤ 30 lines, ≤ 3 files, no file deletions
 forbid in diff: literal order-total / confirmation constants,
        `if (test|kane|headless)`, deleted/weakened assertions,
        removal of discount / quantity / pay logic
+       // 15 Nov (Judge B 4): also DISCOUNT_PERCENT tampering,
+       // object-literal totals, literal `return <pence>`, and any
+       // `A[1-5]: true` assertion weakening
 on violation: reject patch, restore git sha_before, log CHEAT_REJECTED,
        attempt still consumed, fixer gets the rejection reason only
+       // 15 Nov: in the staged (non-git) working tree the rollback
+       // restores pre-patch file contents by content hash instead
 on pass: git sha_after recorded; re-run is replay-first (see §6)
 ```
 
-Fixer input is minimal and fixed-format: failing step, Kane's verbatim `remark`, screenshot path, allow-listed file list. **No full NDJSON, no journal history** — both leak prompt-injection surface and tokens. Rollback is `git checkout sha_before` of allow-listed paths; the working tree must be clean at gate start or `dirty=true` is recorded and the run is marked unreproducible.
+Fixer input is minimal and fixed-format: failing step, Kane's verbatim `remark`, screenshot path, allow-listed file list. **No full NDJSON, no journal history** — both leak prompt-injection surface and tokens. The fixed-format record is what the loop's own patcher consumes (and what is emitted as the FIX PROMPT audit record) — it is not sent to an external agent (15 Nov correction, see §1). Rollback is `git checkout sha_before` of allow-listed paths; the working tree must be clean at gate start or `dirty=true` is recorded and the run is marked unreproducible.
+
+**Fixer strategies (15 Nov):** `double-charge` (idempotency guard: `pay()` returns the existing confirmation; clicks ignored while Processing) and `g1-ledger` (G1: `reset()` preserves `state.orders`, so the ledger survives "Start new order" per spec §3.4). G1 stays unfixed in the shipped code so Kane has a real bug to catch; the strategy exists so the loop can fix it the moment Kane catches it live.
 
 ## 5. Attempt caps + human-blocked (two caps — Wave 2 correction)
 
 Wave 1's per-signature cap has a reset loophole: a fixer that changes the failure mode (wrong total → no confirmation) would mint a new signature and restart the count. Fix with **two caps, both enforced**:
 
 ```
-signature = hash(objective_hash + failing_step + assertion_text)
+signature = hash(objective_hash + failing_step)   // 15 Nov: remark is NEVER hashed
 attempts[signature] += 1 on each APP_BUG dispatch
 attempts_per_claim += 1        // per PROVISIONAL_DONE, never resets on signature change
 if attempts[signature] > 3 or attempts_per_claim > 5:
     state = HUMAN_BLOCKED; no 4th run; console shows the 3 failures + credits
 ```
+
+**15 Nov correction — signature normalisation (user panel HIGH).** The earlier draft hashed
+the verbatim Kane `remark` into the signature. Real Kane remarks are LLM-generated and vary
+between the first red and the confirm replay — the second red would mint a new signature,
+the pending red would never match, and the fixer would never dispatch (replay livelock,
+bounded only by the per-claim cap). The signature is now `hash(objective_hash + failing_step)`
+only; the remark is recorded in the journal but never hashed.
+
+**Replay cap (15 Nov, principal engineer #5).** At most **2 replays without a fixer dispatch**
+per claim, then `HUMAN_BLOCKED` — even if every replay is a different failure. The count resets
+to 0 on a fixer dispatch (a fix is progress). This bounds the signature-normalisation livelock
+from the other side.
+
+**State persistence (15 Nov, principal engineer #5).** Gate state is persisted to `state.json`,
+derived from `journal.jsonl` — restarting the watcher restores attempt counts, pending reds,
+and replay counts, so a restart cannot reset the caps.
 
 `HUMAN_BLOCKED` is a visible terminal state, not a log line: status strip, console banner, and journal entry. Only a human clearing the state (new `PROVISIONAL_DONE` with a changed objective hash) re-arms it. Flake replays, `DIDNT_START`, and `TEST_BUG` fixes never consume app attempts.
 
@@ -112,6 +156,8 @@ GREEN = replay_pass AND independent_pass
 ```
 
 Two identical replays count as *one* pass plus a flake filter. The independent sweep runs **only after a replay pass**, so it is paid for once per genuine fix, not per attempt. Only `GREEN` lets the verifier write `LOOP_VERIFIED`.
+
+**15 Nov correction — the live loop now spawns the sweep.** The first live implementation spawned exactly one `testmd` replay per save and handled only the `fixer` decision: a `replay` decision triggered nothing (no re-spawn, no timer) and nothing ever spawned the O2 sweep, so `LOOP_VERIFIED` was unreachable in live mode. `runLiveGate` now loops until a terminal state (replay → re-spawn to confirm; fixer → re-spawn the replay to prove the fix; replay pass → O2 sweep via `kane run`; sweep pass → `LOOP_VERIFIED`), bounded by the gate's caps plus a 12-spawn cap per save-triggered run. A `sweepMode: 'local'` fallback runs the local deterministic probes and labels the pass LOCAL-SWEEP, never as a Kane run. Tested with a mocked Kane spawn (`kane-watch/test/run-live-loop.cjs`).
 
 ## 7. Replay-first
 
@@ -182,13 +228,24 @@ for each line: strip; skip blank; try JSON parse; on failure keep
 dispatch on event type: known types handled; unknown types counted
   (unknown_type_count in journal) and ignored — never crash, never
   treat an unknown type as terminal
+  // 15 Nov (principal engineer #7): whitelist the known typed events
+  // (stream_start, error, warning, bifurcation, child_agent_start/end,
+  // ask_user, recording_state, project_folder_auto_defaulted) instead of
+  // counting them unknown; step events WITH a type field also set the
+  // failing step (earlier only typeless events did — a real failed run
+  // could have classified DIDNT_START)
+coerce result_code with Number() — strict === 740 misses the string "740"
 terminal event: run_end for `kane run`; test_md_done for `testmd run`
   // accept either, but record which one terminated the run; a run
   // that ends on the WRONG terminal type for its command is INCONCLUSIVE
+  // `done` is an assurance-stream terminal only — on run/testmd/testrun
+  // it is the wrong terminal type, so INCONCLUSIVE
 exit-code-first: exit != 0 overrides any optimistic stream reading;
   exit == 0 with no terminal event is INCONCLUSIVE, never PASS
   // ...except: trust run_end.status / result_code / verdict OVER the
   // exit code when both are present (see §3 — exit codes lie)
+  // exit 3 means cancelled-only for testrun (INCONCLUSIVE), not
+  // FLAKE_OR_TIMEOUT for all commands (15 Nov, principal #7)
 ```
 
 **Pin the CLI version and fixture-test the parser Day 1 against:**
