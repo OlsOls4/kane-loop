@@ -1,23 +1,17 @@
 {
- "generated": "2026-11-15T22:11:25Z",
+ "generated": "2026-11-16T19:47:28Z",
  "mode": "live",
- "verdict": "GREEN (substance): fresh O1 + independent O2 pass (result_code 100) on the fixed build (deploy 7); replay leg unproven — Kane analyzer failed 4×. G1 ledger-preserve verified live: Start new order keeps the earlier order.",
+ "verdict": "GREEN (literal): save-triggered gate run closed end-to-end live 16 Nov — replay pass (loopmart-o1-core-8, result_code 100) + independent O2 sweep pass (result_code 100) → LOOP_VERIFIED. The -6 test still fails the replay analyzer at step 18 (5th analyzer failure, Kane-side, app correct); the -8 test replays clean. G1 ledger-preserve verified live 15 Nov.",
  "credits": {
-  "spent": 820.68,
-  "balance": 9379.32,
-  "note": "820.68 credits spent 15 Nov (10,200 → 9,379.32). run_end credits sum 646.31 across the 12 runs that emitted one; the four analyzer-failed replays add 9.99 (balance delta, no run_end); the rest covers the VM-interrupted partial run (8.72), setup runs (33.12), and 122.54 of unreconciled Kane-side metering (balance deltas run above run_end on the big runs) — not itemised, not invented."
+  "spent": 897.68,
+  "balance": 9302.32,
+  "note": "897.68 credits spent 15–16 Nov (10,200 → 9,302.32). run_end credits sum 716.62 across the 13 runs that emitted one; the five analyzer-failed replays add 12.80 (balance delta, no run_end); the two -8 replays add 3.88 combined (balance delta, no run_end); the rest covers the VM-interrupted partial run (8.72), setup runs (33.12), and 122.54 of unreconciled Kane-side metering (balance deltas run above run_end on the big runs) — not itemised, not invented."
  },
  "liveRunEnd": {
   "type": "run_end",
   "status": "passed",
-  "summary": "Added 2 Kane Notebooks (£10.00 each) and 1 Loop Mug (£15.00) to the cart, for a £35.00 subtotal.\nApplied discount code KANE10, reducing the cart total by 10% to £31.50.\nRemoved the Loop Mug from the cart; the 2 notebooks remained with the discount applied, for a £18.00 total.\nClicked Pay twice quickly and received one order confirmation, LOOP-1001. Only the 2 Kane Notebooks reduced in stock, from 10 to 8; other products' stock stayed unchanged.\nStarted a new order. The earlier order, LOOP-1001, remains listed in the order history.",
-  "one_liner": "completed a discounted notebook order on LoopMart",
-  "reason": "Objective completed",
-  "result_code": 100,
-  "reason_code": "success.complete",
-  "duration": 227.8,
-  "credits_consumed": 85.28851300000001,
-  "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7GKY322WPZ4T2WY4VREF4H3/dashboard/share/US_MCJGDTRLQDDGS6Z1SF3V28SAUVFARFZ203H2YEWACLCXNZJ2L0AASDD0YWP7QXZQ?type=summary&agentView=true&fqdn=summary-page",
+  "summary": "Reviewed the product prices: Kane Notebook was £10.00 and Loop Mug was £15.00.\nAdded two Kane Notebooks and one Loop Mug; the subtotal was £35.00.\nApplied the KANE10 discount, bringing the total to £31.50.\nRemoved the Loop Mug from the cart; two notebooks with the discount totaled £18.00.\nClicked Pay twice quickly and received confirmation of a single order. Kane Notebook stock decreased by two, while all other product stock remained unchanged.",
+  "one_liner": "completed a discounted notebook checkout on LoopMart",
   "final_state": {
    "url": "https://kane-loop-loopmart.vercel.app/index.html",
    "kane_notebook_price": "£10.00",
@@ -25,11 +19,416 @@
    "cart_subtotal": "£35.00",
    "discounted_cart_total": "£31.50",
    "notebooks_discounted_total": "£18.00",
-   "checkout_order_id": "LOOP-1001",
-   "order_ledger_checkout_order_count": "1"
-  }
+   "order_count": "1",
+   "kane_notebook_stock_decrease": "2"
+  },
+  "reason": "Objective completed",
+  "duration": 239.5,
+  "bifurcated": false,
+  "total_runs": 1,
+  "context": {
+   "memory": {
+    "kane_notebook_price": {
+     "extracted_value": "£10.00",
+     "operator": "equals",
+     "transforms": [
+      "strip"
+     ],
+     "json_path": null,
+     "reasoning": "value: '£10.00' (stored, no comparison)",
+     "analyzer_type": "textual_visual",
+     "step": 2,
+     "query": "the Kane Notebook price shown in its product card",
+     "condition": "The Kane Notebook price shown on the page is saved as {{kane_notebook_price}}.",
+     "human_description": "Reading the Kane Notebook price from its product card",
+     "expected_value": "",
+     "code_js": "el(23).nextElementSibling?.nextElementSibling?.textContent?.trim() ?? null",
+     "wrapped_js": "(els) => {\n  const __m = {23: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (el(23).nextElementSibling?.nextElementSibling?.textContent?.trim() ?? null);\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"Kane Notebook\"s"
+     ],
+     "needs_unit_conversion": false
+    },
+    "loop_mug_price": {
+     "extracted_value": "£15.00",
+     "operator": "equals",
+     "transforms": [
+      "strip"
+     ],
+     "json_path": null,
+     "reasoning": "value: '£15.00' (stored, no comparison)",
+     "analyzer_type": "textual_visual",
+     "step": 2,
+     "query": "the Loop Mug price shown in its product card",
+     "condition": "The Loop Mug price shown on the page is saved as {{loop_mug_price}}.",
+     "human_description": "Reading the Loop Mug price from its product card",
+     "expected_value": "",
+     "code_js": "el(7).nextElementSibling?.nextElementSibling?.textContent?.trim() ?? null",
+     "wrapped_js": "(els) => {\n  const __m = {7: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (el(7).nextElementSibling?.nextElementSibling?.textContent?.trim() ?? null);\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"Loop Mug\"s"
+     ],
+     "needs_unit_conversion": false
+    },
+    "cart_subtotal": {
+     "extracted_value": "£35.00",
+     "operator": "equals",
+     "transforms": [
+      "strip"
+     ],
+     "json_path": null,
+     "reasoning": "value: '£35.00' (stored, no comparison)",
+     "analyzer_type": "textual_visual",
+     "step": 6,
+     "query": "the cart subtotal amount in the cart summary",
+     "condition": "The cart subtotal is saved as {{cart_subtotal}}.",
+     "human_description": "Reading the cart subtotal from the cart summary",
+     "expected_value": "",
+     "code_js": "el(43).textContent.replace(/^\\s*Subtotal:\\s*/, '').trim()",
+     "wrapped_js": "(els) => {\n  const __m = {43: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (el(43).textContent.replace(/^\\s*Subtotal:\\s*/, '').trim());\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"Subtotal: £\"i"
+     ],
+     "needs_unit_conversion": false
+    },
+    "discounted_cart_total": {
+     "extracted_value": "£31.50",
+     "operator": "equals",
+     "transforms": [
+      "strip"
+     ],
+     "json_path": null,
+     "reasoning": "value: '£31.50' (stored, no comparison)",
+     "analyzer_type": "textual_visual",
+     "step": 10,
+     "query": "the discounted cart total amount displayed in the checkout payment control",
+     "condition": "The total worked out from the cart total calculation is saved as {{discounted_cart_total}}.",
+     "human_description": "Reading the discounted cart total from the checkout",
+     "expected_value": "",
+     "code_js": "(el(66).getAttribute('aria-label') || el(66).textContent).match(/£[\\d.]+/)?.[0] || null",
+     "wrapped_js": "(els) => {\n  const __m = {66: 0};\n  const el = (i) => els[__m[i]];\n  const __v = ((el(66).getAttribute('aria-label') || el(66).textContent).match(/£[\\d.]+/)?.[0] || null);\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:role=button[name=\"Pay £31.50 — test, no money\"i]"
+     ],
+     "needs_unit_conversion": false
+    },
+    "cart_total_matches_discounted_cart_total": {
+     "extracted_value": "£31.50",
+     "operator": "equals",
+     "transforms": [
+      "strip"
+     ],
+     "json_path": null,
+     "reasoning": "value: '£31.50' -> '£31.50' after ['strip']; equals '£31.50' -> PASS",
+     "analyzer_type": "textual_visual",
+     "step": 10,
+     "query": "the cart total amount displayed in the checkout payment control",
+     "condition": "The cart total shown on the page matches .",
+     "human_description": "Reading the cart total from the checkout",
+     "expected_value": "£31.50",
+     "code_js": "(el(66).getAttribute('aria-label') || el(66).textContent).match(/£[\\d.]+/)?.[0] || null",
+     "wrapped_js": "(els) => {\n  const __m = {66: 0};\n  const el = (i) => els[__m[i]];\n  const __v = ((el(66).getAttribute('aria-label') || el(66).textContent).match(/£[\\d.]+/)?.[0] || null);\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:role=button[name=\"Pay £31.50 — test, no money\"i]"
+     ],
+     "needs_unit_conversion": false
+    },
+    "cart_shows_only_notebooks": {
+     "extracted_value": "true",
+     "operator": "equals",
+     "transforms": [],
+     "json_path": null,
+     "reasoning": "value: 'true' -> 'true'; equals 'true' -> PASS",
+     "analyzer_type": "textual_visual",
+     "step": 13,
+     "query": "whether the cart showing only the notebooks is present (in the cart item list)",
+     "condition": "The cart updates to show only the notebooks.",
+     "human_description": "Checking whether the cart shows only the notebooks",
+     "expected_value": "true",
+     "subject": "the cart showing only the notebooks",
+     "must_be": "present",
+     "code_js": "/^2 × Kane Notebook — £20\\.00\\s*[−+]*/.test(el(34).innerText.trim())",
+     "wrapped_js": "(els) => {\n  const __m = {34: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (/^2 × Kane Notebook — £20\\.00\\s*[−+]*/.test(el(34).innerText.trim()));\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"× Kane Notebook — £20.00 −+\"i"
+     ],
+     "needs_unit_conversion": false
+    },
+    "cart_total_matches_two_notebooks_discount": {
+     "extracted_value": "£18.00",
+     "operator": "equals",
+     "transforms": [],
+     "json_path": null,
+     "reasoning": "value: '£18.00' -> '£18.00'; equals '£18.00' -> PASS",
+     "analyzer_type": "textual_visual",
+     "step": 13,
+     "query": "the cart total amount reflected in the payment control",
+     "condition": "The cart total matches the total you work out for 2 notebooks with the discount applied.",
+     "human_description": "Reading the cart total from the payment control",
+     "expected_value": "£18.00",
+     "code_js": "(el(60).innerText.match(/£\\d+\\.\\d{2}/)||[])[0]||null",
+     "wrapped_js": "(els) => {\n  const __m = {60: 0};\n  const el = (i) => els[__m[i]];\n  const __v = ((el(60).innerText.match(/£\\d+\\.\\d{2}/)||[])[0]||null);\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:role=button[name=\"Pay £18.00 — test, no money\"i]"
+     ],
+     "needs_unit_conversion": false
+    },
+    "notebooks_discounted_total": {
+     "extracted_value": "£18.00",
+     "operator": "equals",
+     "transforms": [
+      "strip"
+     ],
+     "json_path": null,
+     "reasoning": "value: '£18.00' (stored, no comparison)",
+     "analyzer_type": "textual_visual",
+     "step": 13,
+     "query": "the total for two Kane Notebooks with the applied discount",
+     "condition": "The total for 2 notebooks with the discount applied is saved as {{notebooks_discounted_total}}.",
+     "human_description": "Extracting the discounted total for two notebooks",
+     "expected_value": "",
+     "code_js": "(el(60).innerText.match(/£\\d+\\.\\d{2}/)||[])[0]||null",
+     "wrapped_js": "(els) => {\n  const __m = {60: 0};\n  const el = (i) => els[__m[i]];\n  const __v = ((el(60).innerText.match(/£\\d+\\.\\d{2}/)||[])[0]||null);\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:role=button[name=\"Pay £18.00 — test, no money\"i]"
+     ],
+     "needs_unit_conversion": false
+    },
+    "order_ledger_checkout_order_count": {
+     "extracted_value": "1",
+     "operator": "equals",
+     "transforms": [],
+     "json_path": null,
+     "reasoning": "value: '1' -> '1'; equals '1' -> PASS",
+     "analyzer_type": "textual_visual",
+     "step": 19,
+     "query": "the number of orders reported in the order ledger summary",
+     "condition": "The order ledger contains exactly one order for this checkout.",
+     "human_description": "Reading the order count from the ledger summary",
+     "expected_value": "1",
+     "code_js": "Number((el(58).textContent.match(/\\d+/)||[])[0])",
+     "wrapped_js": "(els) => {\n  const __m = {58: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (Number((el(58).textContent.match(/\\d+/)||[])[0]));\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"1 order, total £\"i"
+     ],
+     "needs_unit_conversion": false
+    },
+    "kane_notebook_stock_decrease": {
+     "extracted_value": "2",
+     "operator": "equals",
+     "transforms": [],
+     "json_path": null,
+     "reasoning": "value: '2' -> '2'; equals '2' -> PASS",
+     "analyzer_type": "textual_visual",
+     "step": 19,
+     "query": "the decrease from the initial stock of 10 shown by the Kane Notebook stock entry",
+     "condition": "The stock count for Kane Notebook has decreased by exactly 2.",
+     "human_description": "Calculating the Kane Notebook stock decrease",
+     "expected_value": "2",
+     "code_js": "10-Number((el(78).textContent.match(/—\\s*(\\d+)\\s+in stock/)||[])[1])",
+     "wrapped_js": "(els) => {\n  const __m = {78: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (10-Number((el(78).textContent.match(/—\\s*(\\d+)\\s+in stock/)||[])[1]));\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"Kane Notebook — 8 in stock\"i"
+     ],
+     "needs_unit_conversion": false
+    },
+    "other_product_stock_unchanged": {
+     "extracted_value": "true",
+     "operator": "equals",
+     "transforms": [],
+     "json_path": null,
+     "reasoning": "value: 'true' -> 'true'; equals 'true' -> PASS",
+     "analyzer_type": "textual_visual",
+     "step": 19,
+     "query": "whether every non-Kane product stock entry in the stock list remains at 10",
+     "condition": "No other product stock has changed.",
+     "human_description": "Checking unchanged stock for the other products",
+     "expected_value": "true",
+     "code_js": "Array.from(el(75).querySelectorAll('li')).filter(x=>!x.textContent.includes('Kane Notebook')).every(x=>/—\\s*10\\s+in stock/.test(x.textContent))",
+     "wrapped_js": "(els) => {\n  const __m = {75: 0};\n  const el = (i) => els[__m[i]];\n  const __v = (Array.from(el(75).querySelectorAll('li')).filter(x=>!x.textContent.includes('Kane Notebook')).every(x=>/—\\s*10\\s+in stock/.test(x.textContent)));\n  return (typeof __v === 'boolean' ? String(__v) : __v);\n}",
+     "locators": [
+      "internal:text=\"Loop Mug — 10 in stockDebug\"i"
+     ],
+     "needs_unit_conversion": false
+    }
+   },
+   "variables": {
+    "kane_notebook_price": {
+     "syntax": "{{kane_notebook_price}}",
+     "value": "£10.00",
+     "type": "memory",
+     "secret": false,
+     "source": "runtime"
+    },
+    "loop_mug_price": {
+     "syntax": "{{loop_mug_price}}",
+     "value": "£15.00",
+     "type": "memory",
+     "secret": false,
+     "source": "runtime"
+    },
+    "cart_subtotal": {
+     "syntax": "{{cart_subtotal}}",
+     "value": "£35.00",
+     "type": "memory",
+     "secret": false,
+     "source": "runtime"
+    },
+    "discounted_cart_total": {
+     "syntax": "{{discounted_cart_total}}",
+     "value": "£31.50",
+     "type": "memory",
+     "secret": false,
+     "source": "runtime"
+    },
+    "notebooks_discounted_total": {
+     "syntax": "{{notebooks_discounted_total}}",
+     "value": "£18.00",
+     "type": "memory",
+     "secret": false,
+     "source": "runtime"
+    },
+    "cart_total_matches_discounted_cart_total": {
+     "syntax": "{{cart_total_matches_discounted_cart_total}}",
+     "value": "£31.50",
+     "type": "memory",
+     "secret": false
+    },
+    "cart_shows_only_notebooks": {
+     "syntax": "{{cart_shows_only_notebooks}}",
+     "value": "true",
+     "type": "memory",
+     "secret": false
+    },
+    "cart_total_matches_two_notebooks_discount": {
+     "syntax": "{{cart_total_matches_two_notebooks_discount}}",
+     "value": "£18.00",
+     "type": "memory",
+     "secret": false
+    },
+    "order_ledger_checkout_order_count": {
+     "syntax": "{{order_ledger_checkout_order_count}}",
+     "value": "1",
+     "type": "memory",
+     "secret": false
+    },
+    "kane_notebook_stock_decrease": {
+     "syntax": "{{kane_notebook_stock_decrease}}",
+     "value": "2",
+     "type": "memory",
+     "secret": false
+    },
+    "other_product_stock_unchanged": {
+     "syntax": "{{other_product_stock_unchanged}}",
+     "value": "true",
+     "type": "memory",
+     "secret": false
+    }
+   },
+   "pointer": "(passed) completed a discounted notebook checkout on LoopMart"
+  },
+  "credits_consumed": 70.310717,
+  "session_dir": "/home/hatch/.testmuai/kaneai/sessions/317530d4-0809-46f3-99ec-493d6d67c22d",
+  "run_dir": "/home/hatch/.testmuai/kaneai/sessions/317530d4-0809-46f3-99ec-493d6d67c22d/runs/0",
+  "result_code": 100,
+  "reason_code": "success.complete",
+  "per_flow_metadata": [
+   {
+    "result_code": "100",
+    "reason_code": "success.complete",
+    "error_message": null,
+    "summary": "Reviewed the product prices: Kane Notebook was £10.00 and Loop Mug was £15.00.\nAdded two Kane Notebooks and one Loop Mug; the subtotal was £35.00.\nApplied the KANE10 discount, bringing the total to £31.50.\nRemoved the Loop Mug from the cart; two notebooks with the discount totaled £18.00.\nClicked Pay twice quickly and received confirmation of a single order. Kane Notebook stock decreased by two, while all other product stock remained unchanged.",
+    "one_liner": "completed a discounted notebook checkout on LoopMart",
+    "credits_consumed": 70.310717
+   }
+  ],
+  "run_id": "run-0",
+  "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7JY4W7N3WWGP90VXTQYNZ7X/dashboard/share/US_X23JU04H6H6WZ8GJFIBR31JOYRZS2HKV88JFJCIBGMOLX11C8L3P0QO77UYBD32N?type=summary&agentView=true&fqdn=summary-page",
+  "coverage": {
+   "status": "skipped"
+  },
+  "v": 1,
+  "ts": "2026-11-16T19:47:27.917Z"
  },
  "runs": [
+  {
+   "run_id": "20261116-1947-o2-gate-sweep",
+   "trigger": "Live gate (save-triggered runLiveGate) — O2 chaos sweep, spawned after the -8 replay pass",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Gate-spawned independent sweep: Kane derived the totals itself (£35.00 subtotal, £31.50 with KANE10, £18.00 for 2 notebooks). Double-click Pay → exactly 1 order (order_count 1, no second order); Kane Notebook stock −2, all other stock unchanged. LOOP_VERIFIED: replay pass + sweep pass in one save-triggered gate run.",
+   "note": "LIVE Kane run — 267.3 s, 70.31 credits. Session 317530d4-0809-46f3-99ec-493d6d67c22d; evidence pack dca1a807-6194-44ec-ad9a-e43ab50e8eaa.evidence.",
+   "credits": 70.31,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ],
+   "test_url": "https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7JY4W7N3WWGP90VXTQYNZ7X/dashboard/share/US_X23JU04H6H6WZ8GJFIBR31JOYRZS2HKV88JFJCIBGMOLX11C8L3P0QO77UYBD32N?type=summary&agentView=true&fqdn=summary-page",
+   "beforeAfter": "Deploy 6 (re-armed): 2 orders, stock −4. Deploy 7/8 (fixed): 1 order, stock −2 — now proven by the gate itself, end to end."
+  },
+  {
+   "run_id": "20261116-1943-gate-replay8",
+   "trigger": "Live gate (save-triggered runLiveGate) — O1 replay of loopmart-o1-core-8",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Gate replay of the -8 test passed (29.1 s, 33 actions, total £45.00 captured, ledger + stock verified) and was accepted by the gate as the replay pass. First live replay pass — the leg that was 0/5 on analyzer failures against the -6 test.",
+   "note": "LIVE testmd replay — 29.1 s, ~0 credits at check time (3.88 combined with the manual -8 replay, balance delta; no run_end credits). Evidence pack fa479655-bda2-41d6-8f1f-c5793327c537.evidence.",
+   "credits": 0,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261116-1941-replay8-manual",
+   "trigger": "Manual testmd retry — O1 replay of loopmart-o1-core-8 (latest passing O1 test)",
+   "kind": "LIVE",
+   "status": "passed",
+   "exit_code": 0,
+   "result_code": 100,
+   "verdict": "PASSED — result_code 100",
+   "failingStepLabel": "All checks passed",
+   "remark": "Manual retry after the gate's -6 replay failed on the analyzer: the -8 test replayed clean — 33 actions, total £45.00 captured (the exact step that broke the -6 replays), confirmation + ledger + stock −1 each verified. This is what the gate was re-wired to.",
+   "note": "LIVE testmd replay — 24 s, ~0 credits at check time (3.88 combined with the gate -8 replay, balance delta; no run_end credits). NDJSON evidence/replay-retry-8-2026-11-16.ndjson; session b1ea1660-2ae1-4f7a-951a-13024cf61454; evidence pack 6ada055a-9db7-42cb-9343-8b2e519efba5.evidence.",
+   "credits": 0,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
+  {
+   "run_id": "20261116-1939-gate-replay6",
+   "trigger": "Live gate (save-triggered runLiveGate) — O1 replay of loopmart-o1-core-6",
+   "kind": "LIVE",
+   "status": "failed",
+   "exit_code": 1,
+   "result_code": null,
+   "verdict": "FAILED — analyzer_failed (Kane-side, confirmed false)",
+   "failingStepLabel": "analyzer failed at step 18 (Kane-side)",
+   "remark": "Same step-18 total-capture fault as the 3rd/4th replay attempts: the analyzer could not recognize the visible cart total after the discount, though the page showed £45.00. Kane triage confidence 0.94, category automation_bug. App state correct throughout. 5th consecutive analyzer failure on the -6 test — the gate was re-wired to -8 afterwards (kane-watch.js, local change, not yet pushed).",
+   "note": "LIVE testmd replay — 33.3 s, 2.81 credits (balance delta; no run_end credits). Evidence pack 04ebab2e-364e-4750-9299-70169bf9c723.evidence. No result_code, no test_url emitted.",
+   "credits": 2.81,
+   "fixDiff": [
+    "loopmart/cart.js — pay(): if a confirmation exists, return it; never charge twice (double-charge guard, both modes).",
+    "loopmart/app.js — onPayClick(): ignore clicks while Processing; Pay button disabled while Processing.",
+    "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
+    "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
+   ]
+  },
   {
    "run_id": "20261115-2210-o2-deploy7",
    "trigger": "O2 chaos sweep, fresh author — double-click Pay + G1 probe (deploy 7, fixed build)",
@@ -360,6 +759,6 @@
   "loopmart/cart.js — G1 ledger-preserve (15 Nov): Start new order no longer wipes the ledger.",
   "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
  ],
- "replayNote": "O1 replay failed 4× Kane-side (analyzer_failed at steps 2, 2, 18, 18; confirmed false; ~2.4–2.7 credits each). The literal replay leg is unproven; the substance (fresh O1 pass + independent O2 pass) is green. Replays cost ~54 credits measured — not free.",
- "bannerNote": "LIVE — 16 completed Kane CLI runs, 15 Nov 2026. Latest: O2 sweep green (100) on deploy 7 — double-click Pay → 1 order, Notebook stock −2, G1 probe passed. O1 green (100). Fixed build is live; seeded bug armed only via ?mode=buggy / Break it."
+ "replayNote": "O1 replay of loopmart-o1-core-8 PASSED live 16 Nov (result_code 100, 33 actions, total £45.00 captured) — the replay leg is now proven, and the save-triggered gate closed end-to-end on it. The -6 test still fails the analyzer at step 18 (5 failures: steps 2, 2, 18, 18, 18; confirmed false; ~2.4–2.8 credits each). Full fresh-author runs cost ~54 credits measured — replays are not free.",
+ "bannerNote": "LIVE — 20 completed Kane CLI runs, 15–16 Nov 2026. Latest: LOOP_VERIFIED 16 Nov — save-triggered gate closed end-to-end (replay 100 + O2 sweep 100, double-click Pay → 1 order, Notebook stock −2). Fixed build is live; seeded bug armed only via ?mode=buggy / Break it."
 }

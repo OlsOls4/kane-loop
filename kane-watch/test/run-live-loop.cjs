@@ -47,8 +47,11 @@ function freshRoot() {
   execSync('cp ' + path.join(ROOT, 'tests', 'objectives', 'loopmart-chaos-sweep.objective.md') + ' ' + path.join(dir, 'tests', 'objectives', 'loopmart-chaos-sweep.objective.md'));
   // The _test.md the replay actually executes (Wave 4 fix): runLiveGate
   // hashes it as the fallback testFileHash, so the temp root needs it.
+  // Re-wired -6 -> -8 on 16 Nov 2026: -6 fails Kane's replay analyzer at
+  // step 18 (5x, Kane-side); -8 replays clean. The two files are
+  // byte-identical (same sha256), so only the name matters.
   execSync('mkdir -p ' + path.join(dir, '.testmuai', 'tests'));
-  execSync('cp ' + path.join(ROOT, '.testmuai', 'tests', 'loopmart-o1-core-6_test.md') + ' ' + path.join(dir, '.testmuai', 'tests', 'loopmart-o1-core-6_test.md'));
+  execSync('cp ' + path.join(ROOT, '.testmuai', 'tests', 'loopmart-o1-core-8_test.md') + ' ' + path.join(dir, '.testmuai', 'tests', 'loopmart-o1-core-8_test.md'));
   return dir;
 }
 
@@ -126,7 +129,7 @@ check('live loop closes with mocked spawnKane: red -> replay -> fixer -> replay 
   assert.equal(result.capped, undefined, 'must not hit the spawn cap');
   assert.equal(calls.length, 4, 'exactly 4 Kane spawns: 3 testmd replays + 1 sweep run');
   assert.deepEqual(calls.map((c) => c[0]), ['testmd', 'testmd', 'testmd', 'run']);
-  assert.deepEqual(calls[2].slice(0, 4), ['testmd', 'run', '.testmuai/tests/loopmart-o1-core-6_test.md', '--agent'], 'the replay replays the committed _test.md (Wave 4 fix: tests/loopmart-checkout_test.md never existed)');
+  assert.deepEqual(calls[2].slice(0, 4), ['testmd', 'run', '.testmuai/tests/loopmart-o1-core-8_test.md', '--agent'], 'the replay replays the committed _test.md (Wave 4 fix: tests/loopmart-checkout_test.md never existed; re-wired -6 -> -8 on 16 Nov 2026 because -6 fails Kane\'s replay analyzer at step 18, 5x)');
   assert.ok(calls[2].includes('--no-adaptive-heal'), 'the confirm replay keeps --no-adaptive-heal');
   assert.ok(calls[3].includes('--bug-detection') && calls[3].includes('continue'), 'the sweep is a kane run with bug detection');
 

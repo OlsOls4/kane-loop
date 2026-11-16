@@ -47,13 +47,19 @@ const { runSweep, SWEEP_INPUTS } = require('./src/sweep.js');
 
 const ROOT = path.join(__dirname, '..');
 // The replay replays the COMMITTED _test.md authored by the passing live
-// O1 run (loopmart-o1-core-6, 15 Nov, result_code 100) — NOT the
+// O1 run (loopmart-o1-core-8, 15 Nov 22:05, result_code 100) — NOT the
 // nonexistent tests/loopmart-checkout_test.md the old path named (Wave 4
 // fix, 15 Nov: that file never existed; the real tests live in
 // .testmuai/tests/). The saved test carries its own URL in Step 1, so
 // the replay takes no --url; --timeout 300 matches the measured full-run
 // duration (~180 s — the old 120 s cap would kill a passing replay).
-const REPLAY_TEST_FILE = '.testmuai/tests/loopmart-o1-core-6_test.md';
+// 16 Nov re-wire: -6 was the wired file, but the replay analyzer fails
+// on it at step 18 (total capture) 3× in a row (16:16, 21:26, and the
+// 16 Nov 19:39 live-gate run — 5 analyzer failures in total, all
+// Kane-side, app correct). -8 replayed green live 16 Nov 19:41
+// (result_code 100, 33 actions, total £45.00 captured), so the gate
+// replays -8 — the latest passing O1 test.
+const REPLAY_TEST_FILE = '.testmuai/tests/loopmart-o1-core-8_test.md';
 const REPLAY_COMMAND = 'kane-cli testmd run ' + REPLAY_TEST_FILE + ' --agent --headless --no-adaptive-heal --bug-detection continue --timeout 300';
 const REPLAY_INPUTS = 'mug+hoodie, KANE10';
 const DEFAULT_FIXTURE = path.join(ROOT, 'kane-watch', 'test', 'fixtures', 'seeded-double-charge.ndjson');
