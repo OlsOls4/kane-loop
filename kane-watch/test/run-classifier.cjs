@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {
-  createGate, routeRun, validateFix, creditGuard, appendJournal, parseNdjson,
+  createGate, routeRun, validateFix, creditGuard, appendJournal, parseNdjson, bugStrategy,
 } = require('../src/classifier.js');
 const { createRunner } = require('../src/runner.js');
 
@@ -53,6 +53,9 @@ check('seeded double-charge fixture: 740 + verdict -> APP_BUG', () => {
   assert.equal(r.resultCode, 740);
   assert.equal(r.failingStep.step, FAIL_STEP);
   assert.equal(r.creditsConsumed, 14);
+  // Surgery 2: the parser exposes the run_end summary / one-liner so
+  // the classifier can read bug evidence from them, not only the step.
+  assert.equal(r.summary, 'Checkout flow failed: the ledger shows two orders for one checkout.');
 });
 
 check('first red on a signature -> confirm-before-fix replay, no attempt consumed', () => {
@@ -74,6 +77,170 @@ check('second identical red -> fixer dispatched, one attempt consumed', () => {
   assert.equal(h.decision.consumeAttempt, true);
   assert.equal(h.attemptsPerClaim, 1);
   assert.equal(h.attemptsBySignature, 1);
+});
+
+check('confirm routing (17 Nov surgery): a sweep red confirms via a sweep re-run, a replay red via the replay', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  const sweepRed = parse(stream(FAIL_STEP, FAIL_REMARK, { result_code: 740, verdict: { confirmed_bug: true } }));
+  const h1 = gate.handle(sweepRed, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  assert.equal(h1.confirmVia, 'sweep', 'a sweep red must confirm by re-running the sweep — a replay tests production (testmd --url is ignored) and O1 cannot reproduce a double-click bug');
+  const gate2 = createGate({ objectiveHash: 'o1' });
+  const replayRed = parse(stream(FAIL_STEP, FAIL_REMARK, { result_code: 740, verdict: { confirmed_bug: true } }));
+  const h2 = gate2.handle(replayRed, { kind: 'replay' });
+  assert.equal(h2.decision.action, 'replay');
+  assert.equal(h2.confirmVia, 'replay');
+});
+
+check('evidence signature (17 Nov surgery): two reds, different failing steps, same bug evidence -> same signature -> fixer', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  // Retry 1, sweeps 1–3: the same double-charge failed at steps 30, 12
+  // and 19, so the step-only signature never matched. These two reds
+  // reproduce that variance: different failing steps, same 740 +
+  // double-charge evidence.
+  const redStep30 = parse(stream('Verify the order ledger contains exactly one order', 'Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Loop Mug is 8 (expected 9).', { result_code: 740, verdict: { confirmed_bug: true } }));
+  const redStep19 = parse(stream('Verify the stock count for Kane Notebook has decreased by exactly 2', 'Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Kane Notebook is 6 (expected 8) — the checkout was charged twice.', { result_code: 740, verdict: { confirmed_bug: true } }));
+  const h1 = gate.handle(redStep30, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  assert.equal(h1.confirmVia, 'sweep');
+  const h2 = gate.handle(redStep19, { kind: 'sweep' });
+  assert.equal(h2.decision.action, 'fixer', 'different step, same bug evidence must match the first red');
+  assert.equal(h2.decision.consumeAttempt, true);
+  assert.equal(h1.signature, h2.signature, 'the evidence signature is identical across steps');
+});
+
+check('evidence signature: a different bug is a different signature, not a second identical red', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  const dc = parse(stream(FAIL_STEP, FAIL_REMARK, { result_code: 740, verdict: { confirmed_bug: true } }));
+  const g1 = parse(stream('Start a new order, then place a second order', 'After Start new order, the ledger shows only 1 order; the first order is gone.', { result_code: 740, verdict: { confirmed_bug: true } }));
+  const h1 = gate.handle(dc, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  const h2 = gate.handle(g1, { kind: 'sweep' });
+  assert.equal(h2.decision.action, 'replay', 'a different bug is a first red, not a confirm');
+  assert.notEqual(h1.signature, h2.signature);
+});
+
+// B7 retry 3, verbatim shapes from the live sessions
+// (~/.testmuai/kaneai/sessions/): dd7d6b17 (sweep 1), c07710d2
+// (sweep 2), 45eaa618 (sweep 3). All three caught the same double-charge
+// (740, confirmed) but minted three different signatures, because the
+// failing steps' remarks are truncated by Kane and marker-free while
+// the run_end summaries carry the canonical evidence.
+const RETRY3_SWEEP1_SUMMARY = 'The checkout accepted a second Pay click while the first payment was still being processed. It created a second order instead of treating both clicks as one checkout.\nPrevent repeat submission as soon as Pay is pressed, and make the checkout operation safely ignore duplicate requests so one checkout can create only one order and reduce stock once.\nevidence: error_ui_text: △ 2 charges for one checkout — expected 1 (LOOP-1001, LOOP-1002)';
+const RETRY3_SWEEP1_VERDICT = { confirmed: true, family: 'application_issue', category: 'functional_defect', severity: 'major', root_cause: 'The checkout accepted a second Pay click while the first payment was still being processed. It created a second order instead of treating both clicks as one checkout.', bug_title: 'Double-clicking Pay creates duplicate orders and double-decrements stock', one_liner: 'Two quick Pay clicks created two confirmed orders for one checkout, so the notebook stock fell by four rather than two.' };
+const RETRY3_SWEEP2_SUMMARY = 'The checkout did not prevent repeat Pay actions while it was already processing, so one checkout was recorded three times instead of once.\nDisable or ignore further Pay requests as soon as checkout starts, and make the order creation process accept only one request for each checkout.\nevidence: objective_contradiction: ⚠ 3 charges for one checkout — expected 1 (LOOP-1001, LOOP-1002, LOOP-1003)';
+const RETRY3_SWEEP2_VERDICT = { confirmed: true, family: 'application_issue', category: 'functional_defect', severity: 'major', root_cause: 'The checkout did not prevent repeat Pay actions while it was already processing, so one checkout was recorded three times instead of once.', bug_title: 'Checkout creates three orders from a double Pay click', one_liner: 'A single checkout created three confirmed charges after the required quick double-click on Pay.' };
+const RETRY3_SWEEP3_SUMMARY = 'The checkout accepts a second Pay click while the first payment is still being processed, so it records the same checkout twice.\nDisable or ignore repeated Pay submissions while checkout is processing, and enforce one order per checkout on the server side.\nevidence: error_ui_text: ⚠ 2 charges for one checkout — expected 1 (LOOP-1001, LOOP-1002)';
+const RETRY3_SWEEP3_VERDICT = { confirmed: true, family: 'application_issue', category: 'functional_defect', severity: 'major', root_cause: 'The checkout accepts a second Pay click while the first payment is still being processed, so it records the same checkout twice.', bug_title: 'Checkout creates duplicate orders on double-click Pay', one_liner: 'Double-clicking Pay created two orders and deducted four notebooks instead of creating one order and deducting two.' };
+
+check('evidence signature (surgery 2, retry 3): two reds, marker-free failing steps, summaries carry the double-charge evidence -> same signature -> fixer', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  // Sweep 1: failing step 24, Kane-truncated remark, no markers.
+  const red1 = parse(stream(24, 'assert: Verify the order ledger contains exactly one order for this checkout and the sto', { result_code: 740, summary: RETRY3_SWEEP1_SUMMARY, verdict: RETRY3_SWEEP1_VERDICT }));
+  assert.equal(bugStrategy(red1), 'double-charge', 'the summary alone must identify the bug when the step cannot');
+  const h1 = gate.handle(red1, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  assert.equal(h1.confirmVia, 'sweep');
+  // Sweep 3: failing step 22, Kane-truncated remark, no markers.
+  const red2 = parse(stream(22, 'assert: The order ledger contains exactly one order for this checkout, the stock count f', { result_code: 740, summary: RETRY3_SWEEP3_SUMMARY, verdict: RETRY3_SWEEP3_VERDICT }));
+  const h2 = gate.handle(red2, { kind: 'sweep' });
+  assert.equal(h2.decision.action, 'fixer', 'marker-free steps must still converge when the run_end summaries name the same bug');
+  assert.equal(h1.signature, h2.signature, 'the evidence signature is identical across steps when the summaries agree');
+});
+
+check('evidence signature (surgery 2, retry 3): a "3 charges" red matches a "2 charges" red', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  const red1 = parse(stream(24, 'assert: Verify the order ledger contains exactly one order for this checkout and the sto', { result_code: 740, summary: RETRY3_SWEEP1_SUMMARY, verdict: RETRY3_SWEEP1_VERDICT }));
+  const h1 = gate.handle(red1, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  // Sweep 2: the agent landed three charges; the failing step is a bare
+  // wait with no remark markers at all.
+  const red2 = parse(stream(23, 'wait: Waiting after confirmation', { result_code: 740, summary: RETRY3_SWEEP2_SUMMARY, verdict: RETRY3_SWEEP2_VERDICT }));
+  const h2 = gate.handle(red2, { kind: 'sweep' });
+  assert.equal(h2.decision.action, 'fixer', 'three charges is the same double-charge as two');
+  assert.equal(h1.signature, h2.signature, 'the "3 charges" red shares the "2 charges" red signature');
+  // The N-charges marker alone, with no order ids anywhere: "3 charges
+  // for one checkout" must identify the bug without LOOP-1002.
+  const bare3 = parse(stream('Verify the order ledger contains exactly one order', 'Ledger shows an unexpected extra order.', { result_code: 740, summary: 'The checkout created 3 charges for one checkout — expected 1.', verdict: { confirmed: true } }));
+  assert.equal(bugStrategy(bare3), 'double-charge');
+  // ... and a "1 charge" line must NOT: it describes a correct checkout.
+  const one = parse(stream('Verify the order ledger contains exactly one order', 'Ledger shows an unexpected extra order.', { result_code: 740, summary: 'The checkout created 1 charge for one checkout — expected 1.', verdict: { confirmed: true } }));
+  assert.equal(bugStrategy(one), null, '"1 charge for one checkout" is correct behaviour, not the double-charge');
+});
+
+check('evidence signature (surgery 2): a paraphrase-only summary still identifies the double-charge', () => {
+  // No "N charges" line, no order ids anywhere — only Kane's own words
+  // for the duplicate recording (retry 3, sweep 2 summary, first line).
+  const p1 = parse(stream('wait: Waiting after confirmation', 'The agent waited for the confirmation to appear.', { result_code: 740, summary: 'The checkout did not prevent repeat Pay actions while it was already processing, so one checkout was recorded three times instead of once.', verdict: { confirmed: true } }));
+  assert.equal(bugStrategy(p1), 'double-charge');
+  const p2 = parse(stream('Verify the order ledger contains exactly one order', 'The ledger shows more orders than expected.', { result_code: 740, summary: 'The checkout accepts a second Pay click while the first payment is still being processed, so it records the same checkout twice.', verdict: { confirmed: true } }));
+  assert.equal(bugStrategy(p2), 'double-charge');
+});
+
+check('G1 guard (surgery 2): a G1 red mentioning LOOP-1002 / "2 orders" in remark AND summary still classifies g1-ledger, not double-charge', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  const dc = parse(stream(24, 'assert: Verify the order ledger contains exactly one order for this checkout and the sto', { result_code: 740, summary: RETRY3_SWEEP1_SUMMARY, verdict: RETRY3_SWEEP1_VERDICT }));
+  const h1 = gate.handle(dc, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  const g1 = parse(stream('Start a new order, then place a second order', 'After Start new order, the ledger shows only the second order (LOOP-1002); the first order is gone.', { result_code: 740, summary: 'After Start new order the ledger shows 2 orders were expected but only the second order (LOOP-1002) remains; the first order was wiped.', verdict: { confirmed_bug: true } }));
+  assert.equal(bugStrategy(g1), 'g1-ledger', 'G1 is checked first: LOOP-1002 / "2 orders" in a G1 remark must not misroute to double-charge, even when the summary repeats them');
+  const h2 = gate.handle(g1, { kind: 'sweep' });
+  assert.equal(h2.decision.action, 'replay', 'a different bug is a first red, not a confirm');
+  assert.notEqual(h1.signature, h2.signature);
+});
+
+check('evidence signature (surgery 2): an unknown bug still falls back to the step signature', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  const u1 = parse(stream('Verify totals are computed server-side', 'totals come from a wrong constant outside the allow-list', { result_code: 740, summary: 'The checkout totals are wrong.', verdict: { confirmed_bug: true } }));
+  assert.equal(bugStrategy(u1), null);
+  const h1 = gate.handle(u1, { kind: 'sweep' });
+  assert.equal(h1.decision.action, 'replay');
+  const u2 = parse(stream('Verify the discount applies once', 'discount applied twice to the same cart', { result_code: 740, summary: 'The discount was applied twice.', verdict: { confirmed_bug: true } }));
+  assert.equal(bugStrategy(u2), null);
+  const h2 = gate.handle(u2, { kind: 'sweep' });
+  assert.equal(h2.decision.action, 'replay', 'different steps, no bug evidence: a different signature, not a confirm');
+  assert.notEqual(h1.signature, h2.signature);
+  // The fallback is still stable per step: the same unknown bug twice
+  // does confirm.
+  const h3 = gate.handle(u1, { kind: 'sweep' });
+  assert.equal(h3.decision.action, 'fixer');
+  assert.equal(h3.signature, h1.signature);
+});
+
+check('agent misstep (17 Nov surgery): 710/720 -> AGENT_MISSTEP, no fix, no attempt consumed; analyzer failure still DIDNT_START', () => {
+  const gate = createGate({ objectiveHash: 'o1' });
+  // Retry 1, sweep 1: 710, verdict automation_bug/agent_misstep — the
+  // bug fired on screen, but the agent then Reset and re-checked out,
+  // so the final ledger could not be trusted. The gate must not fix
+  // from a run whose verdict says the agent messed up.
+  const mis710 = parse(stream('Verify the order ledger contains exactly one order', 'Ledger shows 2 orders — the agent reset and re-checked out, so the ledger holds orders from both checkouts.', { result_code: 710, verdict: { confirmed: false, family: 'automation_bug', category: 'agent_misstep', severity: 'major' } }));
+  assert.equal(mis710.classification, 'AGENT_MISSTEP');
+  const h = gate.handle(mis710, { kind: 'sweep' });
+  assert.equal(h.decision.action, 'agent-misstep');
+  assert.equal(h.decision.consumeAttempt, false);
+  assert.equal(h.attemptsPerClaim, 0);
+  assert.equal(h.state, 'PROVISIONAL_DONE', 'an agent misstep does not human-block the claim');
+  // Retry 1, sweep 2: 720, the agent asserted a total mismatch when
+  // the cart correctly showed £31.50.
+  const mis720 = parse(stream('Verify the cart total', 'Agent asserted a total mismatch when the cart correctly showed £31.50.', { result_code: 720, verdict: { confirmed: false, family: 'automation_bug', category: 'agent_misstep', severity: 'minor' } }));
+  assert.equal(mis720.classification, 'AGENT_MISSTEP');
+  assert.equal(gate.handle(mis720, { kind: 'sweep' }).decision.action, 'agent-misstep');
+  assert.equal(gate.attemptsPerClaim, 0, 'missteps never consume the fix budget');
+  // The verdict family alone must not misroute an analyzer failure:
+  // no result_code, no failing step -> DIDNT_START (regression guard —
+  // the -6 replay failures carry family automation_bug / category
+  // agent_misstep too, but nothing verifiable ran).
+  const analyzerText = JSON.stringify({ type: 'stream_start', run_id: 'sess-an-1', synthetic: true }) + '\n'
+    + JSON.stringify({ type: 'step_end', index: 18, status: 'failed', summary: 'analyze: Reading the displayed total from the cart summary' }) + '\n'
+    + JSON.stringify({ type: 'run_end', run_id: 'run-0', status: 'failed', reason: 'analyzer_failed: @ step 18', verdict: { confirmed: false, status: 'broken', family: 'automation_bug', category: 'agent_misstep', severity: 'minor' } }) + '\n'
+    + JSON.stringify({ type: 'test_md_step_end', step_index: 1, status: 'failed' }) + '\n'
+    + JSON.stringify({ type: 'test_md_done', overall_status: 'failed', duration_s: 23, session_id: 'sess-an-1' }) + '\n';
+  const an = parse(analyzerText, 'testmd', 1, 23000);
+  assert.equal(an.classification, 'DIDNT_START');
+  // A misstep with no result_code but the automation_bug/agent_misstep
+  // verdict family and a real failing step is still a misstep.
+  const misNoCode = parse(stream('Verify the cart total', 'The agent never saved the expected total before asserting it.', { verdict: { confirmed: false, family: 'automation_bug', category: 'agent_misstep' } }));
+  assert.equal(misNoCode.classification, 'AGENT_MISSTEP');
 });
 
 check('synthetic app-bug run_end routes to fixer; flake routes to replay-only', () => {

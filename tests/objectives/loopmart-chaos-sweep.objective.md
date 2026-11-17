@@ -6,6 +6,10 @@ Do NOT hand-author `tests/loopmart-chaos-sweep_test.md`; author it once with
 This file is the design input.
 **URL placeholder:** `<LOOPMART_URL>` is resolved from config at run time
 (or passed with `--url`). Never commit a `localhost` URL.
+**Live gate (17 Nov surgery):** the sweep's `--url` is the checkout
+itself (`<base>/index.html`), not the site root — the root redirects
+to the console, whose EXAMPLE banner made a sweep agent distrust the
+ledger (B7 retry 1, sweep 3).
 
 **Slug:** `--name loopmart-chaos-sweep` → `.testmuai/tests/loopmart-chaos-sweep_test.md` + `output-loopmart-chaos-sweep/`. Commit both.
 

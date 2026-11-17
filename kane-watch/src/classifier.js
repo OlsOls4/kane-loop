@@ -17,6 +17,10 @@
  *                       consecutive flake on the same signature -> human.
  *   TEST_BUG         -> fix the _test.md/objective only, counted separately.
  *   APP_BUG          -> fixer, and only APP_BUG consumes an app attempt.
+ *   AGENT_MISSTEP    -> stop, no fix, no attempt: Kane's agent failed
+ *                       (710/720/750, automation_bug), not the app.
+ *                       The claim stays PROVISIONAL_DONE; a new save
+ *                       can run again.
  *   INCONCLUSIVE     -> first one: log + one replay (like a flake);
  *                       second consecutive one -> human-blocked.
  *   PASS             -> counts toward GREEN only with provenance (see
@@ -24,17 +28,30 @@
  *                       run id, test-file hash, and distinct sweep inputs.
  *
  * Confirm-before-fix: a first red on a signature triggers an immediate
- * replay before any code change. Only a second identical red dispatches
- * the fixer. Caps: 3 attempts per failure signature AND 5 per claim;
- * either exceeded -> HUMAN_BLOCKED, no further run. Replay cap: at most
- * 2 replays without a fixer dispatch in between, then HUMAN_BLOCKED
- * (backstop against a confirm-before-fix livelock).
+ * re-run before any code change — by re-running the FAILING objective
+ * (17 Nov gate surgery; see confirmVia in handle()). A sweep red
+ * confirms via a sweep re-run (`kane run --url` honours the target;
+ * `testmd --url` is ignored and O1 cannot reproduce a double-click
+ * bug at all, so a replay can never confirm a sweep bug). Only a
+ * second identical red dispatches the fixer. Caps: 3 attempts per
+ * failure signature AND 5 per claim; either exceeded -> HUMAN_BLOCKED,
+ * no further run. Replay cap: at most 2 replays without a fixer
+ * dispatch in between, then HUMAN_BLOCKED (backstop against a
+ * confirm-before-fix livelock).
  *
- * Signatures (user-panel HIGH, 15 Nov): the signature hashes the FAILING
- * STEP only — never the verbatim Kane remark. Real Kane remarks are
- * LLM-generated and vary between the first red and the confirm replay;
- * hashing the remark minted a new signature on the second red, so
- * pendingReds never matched and the fixer never dispatched.
+ * Signatures (17 Nov gate surgery — the 15 Nov step-only signature is
+ * superseded): the signature keys on the BUG EVIDENCE — the result
+ * code + the bug class the failing step + remark identify — not the
+ * step where Kane happened to notice it. B7 retry 1 proved the
+ * step-only signature cannot converge: three sweeps caught the same
+ * double-charge at steps 30, 12 and 19, so each red minted a new
+ * signature and the "second identical red" rule never fired. Two reds
+ * with the same code and the same bug evidence are the same signature
+ * even when the agent's path failed at different steps. With no
+ * identifiable bug evidence the signature falls back to the failing
+ * step (the old behaviour), so an unknown bug class still gets a
+ * stable signature. The verbatim Kane remark is still never hashed:
+ * LLM-generated remarks vary between reds.
  */
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -58,6 +75,120 @@ function signatureFor(objectiveHash, failingStep) {
   return crypto.createHash('sha256')
     .update([objectiveHash || '', normaliseStep(failingStep)].join('|'))
     .digest('hex').slice(0, 16);
+}
+
+// Verdict text for the marker search: the verdict object carries the
+// bug's own words (root cause, title, one-liner, signal excerpts). The
+// summary usually repeats the signal excerpts as "evidence:" lines, so
+// this is a second source, not a new vocabulary — the same canonical
+// markers below are what match.
+function verdictText(verdict) {
+  if (!verdict || typeof verdict !== 'object') return '';
+  const parts = [];
+  // 'suggestion' is deliberately NOT read: it is prescriptive prose
+  // ("so one checkout can create only one order"), not evidence of what
+  // happened, and it duplicates the summary's suggestion paragraph.
+  for (const k of ['root_cause', 'bug_title', 'one_liner']) {
+    if (typeof verdict[k] === 'string') parts.push(verdict[k]);
+  }
+  if (Array.isArray(verdict.signals)) {
+    for (const s of verdict.signals) {
+      if (s && typeof s.excerpt === 'string') parts.push(s.excerpt);
+    }
+  }
+  return parts.join(' ');
+}
+
+// Bug-evidence markers (17 Nov gate surgery; widened by gate surgery 2
+// after B7 retry 3): canonical, low-variance phrases that identify WHICH
+// bug Kane found. Shared with fixer.js's strategyFor — the same evidence
+// that identifies the bug for the signature must identify the fix strategy,
+// or the gate would dispatch a fix for a bug it could not name.
+//
+// Text sources: the failing step + remark AND the run_end summary /
+// one-liner / reason / verdict text. Retry 3 proved the failing step
+// alone cannot converge live: Kane fails at different steps with
+// different wording each run ("2 charges" / "3 charges" / a remark with
+// no markers at all), while the run_end summary carries the canonical
+// app evidence ("N charges for one checkout", LOOP-1002) in every case.
+// Reading more text only ADDS matching surface for the canonical
+// low-variance phrases below; no marker was loosened.
+function evidenceMarkers(parsed) {
+  const stepText = (((parsed.failingStep && parsed.failingStep.step) || '') + ' '
+    + ((parsed.failingStep && parsed.failingStep.remark) || ''));
+  const runText = ((parsed.summary || '') + ' ' + (parsed.oneLiner || '') + ' '
+    + (parsed.reason || '') + ' ' + verdictText(parsed.verdict));
+  const text = (stepText + ' ' + runText).toLowerCase();
+  const markers = [];
+  // Double-charge: two orders / two charges for ONE checkout, a second
+  // order id (LOOP-1002 only exists when a checkout charged twice), or
+  // the notebook stock down by exactly 4 (10 -> 6).
+  if (/ledger/.test(text) && /(2 orders for (this|one) checkout|two charges|charged twice|double.?charge)/.test(text)) markers.push('double-charge');
+  if (/(charged twice|double.?charge|two charges|2 charges)/.test(text)) markers.push('double-charge');
+  // N charges for one checkout (retry 3, sweep 2: "3 charges for one
+  // checkout" — the old "2 charges" literal missed it). N >= 2: a "1
+  // charge" line describes a correct checkout, never this bug.
+  if (/[2-9]\d* charges? for (this|one) checkout/.test(text)) markers.push('double-charge');
+  if (/loop-1002/.test(text)) markers.push('double-charge');
+  if (/(2|two) (confirmed )?orders? for (this|one) checkout/.test(text)) markers.push('double-charge');
+  if (/stock/.test(text) && /(decreased by 4|down by 4|10\s*(→|->|to)\s*6)/.test(text)) markers.push('double-charge');
+  // Paraphrase forms (retry 3 summaries): Kane words the same duplicate
+  // recording without the app's canonical "N charges" line — "one
+  // checkout was recorded three times instead of once", "it records the
+  // same checkout twice". Both are anchored on checkout recording, so
+  // they cannot match a different bug class.
+  if (/recorded (twice|(three|four|\d+) times) instead of once/.test(text)) markers.push('double-charge');
+  if (/record(s|ed)? the same checkout (twice|three times|\d+ times)/.test(text)) markers.push('double-charge');
+  // G1: "Start new order" wipes the ledger.
+  if (/start new order/.test(text) && /ledger/.test(text)) markers.push('g1-ledger');
+  if (/ledger/.test(text) && /(wiped|gone|lost|missing|disappeared|cleared)/.test(text)) markers.push('g1-ledger');
+  // The "only one order" clause is anchored on an observational verb.
+  // Without the anchor, the run_end suggestion prose false-fires G1 on
+  // a double-charge red (retry 3, sweep 1: "so one checkout can create
+  // only one order"). "Shows only 1 order" / "only the second order
+  // remains" are observations of the ledger; "create only one order" is
+  // a prescription and must not match.
+  if (/ledger/.test(text) && (/(shows?|found|contains?|has|lists?|displays?) only (the second|one|1) orders?/.test(text)
+    || /only (the second|one|1) orders? (remains?|remained|left|in the ledger|on the ledger)/.test(text))) markers.push('g1-ledger');
+  return [...new Set(markers)];
+}
+
+// Which bug class the evidence identifies, or null. G1 is checked
+// first: a G1 remark can mention a second order id ("LOOP-1002") or
+// "2 orders" without any double charge having happened, and a G1
+// remark that merely expects two orders ("expected 2 orders, found 1")
+// is not a double charge — the "for this checkout" qualifier matters.
+function bugStrategy(parsed) {
+  const markers = evidenceMarkers(parsed);
+  if (markers.includes('g1-ledger')) return 'g1-ledger';
+  if (markers.includes('double-charge')) return 'double-charge';
+  return null;
+}
+
+// The evidence key for one parsed run: the result code + the bug class
+// the evidence identifies. Two reds with the same code and the same bug
+// evidence are the same bug even when Kane's path failed at different
+// steps. With no identifiable bug evidence, fall back to the failing
+// step (the old behaviour) so an unknown bug class still gets a stable
+// signature.
+function evidenceKey(parsed) {
+  const code = parsed.resultCode === null || parsed.resultCode === undefined ? 'none' : String(parsed.resultCode);
+  const strategy = bugStrategy(parsed);
+  if (strategy) return code + '|' + strategy;
+  return code + '|step:' + normaliseStep(parsed.failingStep && parsed.failingStep.step);
+}
+
+// The failure signature for one parsed run. APP_BUGs are keyed on bug
+// evidence; everything else (flakes, inconclusive) keeps the
+// step-based signature — a flake's step is the only stable thing
+// about it, and the flake rules count consecutive failures, not bugs.
+function evidenceSignatureFor(objectiveHash, parsed) {
+  if (parsed.classification === 'APP_BUG') {
+    return crypto.createHash('sha256')
+      .update([objectiveHash || '', evidenceKey(parsed)].join('|'))
+      .digest('hex').slice(0, 16);
+  }
+  return signatureFor(objectiveHash, parsed.failingStep && parsed.failingStep.step);
 }
 
 function isAppBug(parsed) {
@@ -86,7 +217,8 @@ function isAnalyzerFlake(parsed) {
  * Decide the routing for one parsed run. Pure function of the parse
  * result + gate state (pendingReds, attempt counts).
  * Returns { action, consumeAttempt, reason } where action is one of:
- *   'fixer' | 'replay' | 'setup' | 'test-fix' | 'human-blocked' | 'none'
+ *   'fixer' | 'replay' | 'setup' | 'test-fix' | 'agent-misstep' |
+ *   'human-blocked' | 'none'
  */
 function routeRun(parsed, gate) {
   const c = parsed.classification;
@@ -113,6 +245,7 @@ function routeRun(parsed, gate) {
     return { action: 'replay', consumeAttempt: false, reason: 'first flake: replay once, no code change' };
   }
   if (c === 'TEST_BUG') return { action: 'test-fix', consumeAttempt: false, reason: 'test/objective bug, not app bug' };
+  if (c === 'AGENT_MISSTEP') return { action: 'agent-misstep', consumeAttempt: false, reason: 'agent misstep (710/720/750, automation_bug): Kane\'s agent failed, not the app — no fix, no attempt consumed' };
   if (c === 'INCONCLUSIVE') {
     // First INCONCLUSIVE is treated like a flake (log + one replay);
     // only the second consecutive one blocks (principal-engineer
@@ -126,7 +259,7 @@ function routeRun(parsed, gate) {
     return { action: 'replay', consumeAttempt: false, reason: 'first inconclusive: replay once, no code change' };
   }
   if (c === 'APP_BUG') {
-    const sig = signatureFor(gate.objectiveHash, parsed.failingStep && parsed.failingStep.step);
+    const sig = evidenceSignatureFor(gate.objectiveHash, parsed);
     if (gate.attemptsPerClaim >= MAX_ATTEMPTS_PER_CLAIM) {
       return { action: 'human-blocked', consumeAttempt: false, reason: 'per-claim cap 5 reached' };
     }
@@ -320,8 +453,7 @@ function createGate(opts) {
     /** Handle one parsed run; returns the routing decision + new state. */
     handle(parsed, meta) {
       const decision = routeRun(parsed, this);
-      const sig = signatureFor(this.objectiveHash,
-        parsed.failingStep && parsed.failingStep.step);
+      const sig = evidenceSignatureFor(this.objectiveHash, parsed);
       if (parsed.classification === 'FLAKE_OR_TIMEOUT'
         || (parsed.classification === 'DIDNT_START' && isAnalyzerFlake(parsed))) {
         this.flakeSignatures.set(sig, (this.flakeSignatures.get(sig) || 0) + 1);
@@ -390,8 +522,18 @@ function createGate(opts) {
         }
       }
       if (this.replayPass && this.independentPass) this.state = 'LOOP_VERIFIED';
+      // Confirm routing (17 Nov gate surgery): a 'replay' decision
+      // means re-run the FAILING objective. A sweep red confirms via a
+      // sweep re-run; a replay red confirms via the replay. The live
+      // loop reads confirmVia to choose the next spawn — without it,
+      // a sweep red was "confirmed" by a replay that tests production
+      // and can never reproduce a scratch bug.
+      const confirmVia = decision.action === 'replay'
+        ? ((meta && meta.kind === 'sweep') ? 'sweep' : 'replay')
+        : null;
       return {
         decision: decision,
+        confirmVia: confirmVia,
         signature: sig,
         attemptsBySignature: this.attemptsBySignature[sig] || 0,
         attemptsPerClaim: this.attemptsPerClaim,
@@ -414,6 +556,10 @@ module.exports = {
   ALLOW_LISTED_FILES: ALLOW_LISTED_FILES,
   signatureFor: signatureFor,
   normaliseStep: normaliseStep,
+  evidenceMarkers: evidenceMarkers,
+  bugStrategy: bugStrategy,
+  evidenceKey: evidenceKey,
+  evidenceSignatureFor: evidenceSignatureFor,
   isAppBug: isAppBug,
   routeRun: routeRun,
   validateFix: validateFix,

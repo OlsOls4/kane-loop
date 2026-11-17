@@ -88,104 +88,115 @@ Result code seven-four-zero.
 One fix later, the core flow went green.
 
 20
-00:01:06,540 --> 00:01:08,281
+00:01:06,540 --> 00:01:08,887
 The loop itself runs on real output.
 
 21
-00:01:08,341 --> 00:01:12,284
+00:01:08,947 --> 00:01:14,237
 One hundred tests pass — parser,
 classifier, the checkout, the fixer, the
 sweep.
 
 22
-00:01:12,344 --> 00:01:17,087
-Sixteen live runs, eight hundred twenty
-credits spent — every number on screen is
-a real result.
+00:01:14,297 --> 00:01:20,991
+Twenty live runs, eight hundred ninety-
+eight credits spent — every number on
+screen is a real result.
 
 23
-00:01:17,147 --> 00:01:21,641
+00:01:21,051 --> 00:01:27,076
 Then Kane ran the checkout live, and the
 ledger check failed: the same order
 charged twice.
 
 24
-00:01:21,701 --> 00:01:25,693
+00:01:27,136 --> 00:01:32,493
 Result code seven-four-zero — the
 classifier's verdict, not a claim from the
 app.
 
 25
-00:01:25,753 --> 00:01:32,508
+00:01:32,553 --> 00:01:41,580
 The gate needs two greens before it calls
 anything verified: the same test replayed,
 and a fresh sweep that works the total out
 itself.
 
 26
-00:01:33,008 --> 00:01:41,222
+00:01:42,080 --> 00:01:50,294
 The fix is one patch, twenty-eight lines
 across two files — a single-flight guard
 and an idempotency guard.
 
 27
-00:01:41,282 --> 00:01:47,640
+00:01:50,354 --> 00:01:56,712
 The loop applies its own bounded patch for
 the bug class: one patch, no test edits.
 
 28
-00:01:47,700 --> 00:01:51,892
+00:01:56,772 --> 00:02:00,964
 Toggle the mode and the same double-click
 charges once.
 
 29
-00:01:51,952 --> 00:01:54,968
+00:02:01,024 --> 00:02:04,040
 What you are seeing is the fixed build.
 
 30
-00:01:55,468 --> 00:01:56,629
+00:02:04,540 --> 00:02:05,706
 So what happened?
 
 31
-00:01:56,689 --> 00:01:58,568
+00:02:05,766 --> 00:02:07,654
 Kane ran the checkout live.
 
 32
-00:01:58,628 --> 00:02:05,607
+00:02:07,714 --> 00:02:14,724
 The core flow passed, and the chaos sweep
 went green on retry: one order, result
 code one hundred.
 
 33
-00:02:05,667 --> 00:02:10,850
+00:02:14,784 --> 00:02:19,990
 Same test, same checkout — and Kane
 checked it a second, independent way.
 
 34
-00:02:10,910 --> 00:02:15,806
-One hundred tests, sixteen live runs, two
+00:02:20,050 --> 00:02:24,895
+One hundred tests, twenty live runs, two
 independent green verdicts.
 
 35
-00:02:15,866 --> 00:02:19,828
+00:02:24,955 --> 00:02:28,935
 And the ledger now survives a new order —
 verified live.
 
 36
-00:02:19,888 --> 00:02:24,556
-Replay unproven — Kane's analyzer failed
-four times, not the app.
+00:02:28,995 --> 00:02:35,500
+A save fired the gate: replay passed on
+the minus-eight test, sweep passed — loop
+verified.
 
 37
-00:02:25,056 --> 00:02:31,262
+00:02:35,560 --> 00:02:41,908
+One caveat: the older test file still
+trips Kane's analyzer — a Kane-side bug,
+not ours.
+
+38
+00:02:42,408 --> 00:02:48,757
 Kane Loop: a watcher any agent can install
 in one command, that blocks on a diff, not
 on a claim.
 
-38
-00:02:31,322 --> 00:02:33,265
+39
+00:02:48,817 --> 00:02:50,871
+Twenty live runs, loop verified.
+
+40
+00:02:50,931 --> 00:02:52,919
 Try it — one link, one command.
 
-39
-00:02:33,325 --> 00:02:34,488
+41
+00:02:52,979 --> 00:02:54,168
 Break it yourself.

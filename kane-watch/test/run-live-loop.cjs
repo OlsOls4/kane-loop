@@ -121,7 +121,15 @@ check('buildKaneArgs sweep branch builds the O2 kane-run command from the object
   assert.ok(args.includes('--agent') && args.includes('--headless'));
   assert.ok(args.includes('--bug-detection') && args.includes('continue'));
   assert.ok(args.includes('--timeout') && args.includes('300'), 'the sweep timeout is 300 s — the measured O2 sweep took 180.5 s, over the old 120 s cap');
-  assert.ok(args.includes('--url') && args.includes('http://localhost:8080'));
+  // 17 Nov gate surgery (d): the sweep starts at the checkout itself,
+  // not the site root — the root redirects to /console.html, whose
+  // EXAMPLE banner made a sweep agent distrust the ledger (retry 1).
+  assert.ok(args.includes('--url') && args.includes('http://localhost:8080/index.html'));
+  assert.equal(args[args.indexOf('--url') + 1], 'http://localhost:8080/index.html');
+  const slashArgs = buildKaneArgs({ command: 'sweep', url: 'https://kane-loop-scratch.vercel.app/', root: ROOT });
+  assert.equal(slashArgs[slashArgs.indexOf('--url') + 1], 'https://kane-loop-scratch.vercel.app/index.html', 'a trailing slash is stripped before /index.html is appended');
+  const indexArgs = buildKaneArgs({ command: 'sweep', url: 'http://localhost:8080/index.html', root: ROOT });
+  assert.equal(indexArgs[indexArgs.indexOf('--url') + 1], 'http://localhost:8080/index.html', 'a base that already names /index.html is left alone');
   // No --no-adaptive-heal on a fresh kane run (that flag is testmd-only).
   assert.ok(!args.includes('--no-adaptive-heal'));
 });
@@ -169,6 +177,136 @@ check('live loop closes with mocked spawnKane: red -> replay -> fixer -> replay 
   LM.pay(s);
   LM.pay(s);
   assert.equal(s.orders.length, 1, 'live-loop working copy still double-charges');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// A realistic failing O2 sweep: a run_end with the double-charge
+// evidence (740 + confirmed bug), failing at a given step with a given
+// remark. Two variants reproduce retry 1's step variance (steps 30
+// and 19 for the same bug).
+function redSweep(runId, step, remark) {
+  return JSON.stringify({ type: 'stream_start', run_id: runId, synthetic: true, note: 'MOCKED live sweep — scripted red run_end, not a real Kane run' }) + '\n'
+    + JSON.stringify({ step: step, status: 'failed', remark: remark }) + '\n'
+    + JSON.stringify({ type: 'run_end', status: 'failed', reason: 'Assertion failed at ledger verification step.', duration: 200000, credits_consumed: 60, test_url: null, result_code: 740, verdict: { confirmed_bug: true, type: 'double_charge', severity: 'high' } }) + '\n';
+}
+
+// A sweep that fails on an agent misstep (retry 1, sweep 1 shape):
+// 710, verdict automation_bug/agent_misstep, confirmed false.
+function misstepSweep(runId) {
+  return JSON.stringify({ type: 'stream_start', run_id: runId, synthetic: true, note: 'MOCKED live sweep — scripted agent-misstep run_end, not a real Kane run' }) + '\n'
+    + JSON.stringify({ step: 'Verify the order ledger contains exactly one order', status: 'failed', remark: 'Ledger shows 2 orders — the agent reset and re-checked out, so the ledger holds orders from both checkouts.' }) + '\n'
+    + JSON.stringify({ type: 'run_end', status: 'failed', reason: 'Assertion failed at ledger verification step.', duration: 200000, credits_consumed: 60, test_url: null, result_code: 710, verdict: { confirmed: false, family: 'automation_bug', category: 'agent_misstep', severity: 'major' } }) + '\n';
+}
+
+// Scripted Kane for the sweep-confirm path (17 Nov gate surgery):
+// the O1 replay is green; the sweep reds twice with the same bug
+// evidence at different steps. The second red must dispatch the fixer
+// — and the loop must have re-run the SWEEP to confirm, never a replay.
+function scriptedSpawnKaneSweepRed(calls) {
+  let sweepCalls = 0;
+  return function mockSpawnKane(opts, done) {
+    calls.push(opts.args.slice());
+    if (opts.args[0] === 'testmd') {
+      done({ exitCode: 0, stdout: greenTestmd('live-replay-1'), stderr: '', durationMs: 18000, timedOut: false });
+      return;
+    }
+    sweepCalls += 1;
+    if (sweepCalls === 1) {
+      done({ exitCode: 1, stdout: redSweep('live-sweep-1', 'Verify the order ledger contains exactly one order', 'Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Loop Mug is 8 (expected 9).'), stderr: '', durationMs: 200000, timedOut: false });
+    } else {
+      done({ exitCode: 1, stdout: redSweep('live-sweep-2', 'Verify the stock count for Kane Notebook has decreased by exactly 2', 'Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Kane Notebook is 6 (expected 8) — the checkout was charged twice.'), stderr: '', durationMs: 200000, timedOut: false });
+    }
+  };
+}
+
+check('live loop: sweep red confirms via a sweep re-run (never a replay) and the second red dispatches the fixer', () => {
+  const dir = freshRoot();
+  const journal = path.join(dir, 'journal.jsonl');
+  const gate = createGate({ objectiveHash: 'o1-loopmart-checkout', testFileHash: null });
+  const calls = [];
+  let result = null;
+  runLiveGate({
+    gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
+    preflight: mockPreflight, liveChecks: mockLiveChecksOk,
+    spawnKane: scriptedSpawnKaneSweepRed(calls), stopAfterFix: true,
+  }, (r) => { result = r; });
+  assert.ok(result, 'done() must be called');
+  assert.equal(result.state, 'PROVISIONAL_DONE', 'stopAfterFix ends the run after the fix, before verification');
+  assert.equal(result.fixDispatched, true, 'the fixer dispatched from the sweep leg');
+  assert.equal(calls.length, 3, 'exactly 3 Kane spawns: 1 green replay + 2 sweeps (red + confirm re-run)');
+  assert.deepEqual(calls.map((c) => c[0]), ['testmd', 'run', 'run'], 'the confirm re-runs the SWEEP (kane run), never the replay');
+  assert.equal(calls[1][calls[1].indexOf('--url') + 1], 'http://localhost:8080/index.html', 'the sweep starts at the checkout, not the site root');
+  assert.equal(calls[2][calls[2].indexOf('--url') + 1], 'http://localhost:8080/index.html', 'the confirm sweep starts at the checkout too');
+
+  const lines = fs.readFileSync(journal, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  assert.equal(lines.length, 4, 'four journal lines: replay pass, sweep red, sweep red, fix');
+  assert.deepEqual(lines.map((l) => l.decision), ['replay', 'replay', 'fixer', 'fixer']);
+  assert.equal(lines[0].pass_kind, 'replay');
+  assert.equal(lines[1].classifier, 'APP_BUG');
+  assert.equal(lines[1].decision, 'replay', 'first sweep red: confirm-before-fix');
+  assert.equal(lines[2].classifier, 'APP_BUG');
+  assert.equal(lines[2].decision, 'fixer', 'second sweep red, different step, same evidence: fixer');
+  assert.equal(lines[1].signature, lines[2].signature, 'both sweep reds share the evidence signature');
+  assert.ok(/confirm re-run/.test(lines[2].notes), 'the confirm sweep is labelled as such in the journal');
+  assert.equal(gate.attemptsPerClaim, 1, 'one fix attempt consumed');
+
+  // The fix was really applied to the working copy: double-click is one order.
+  const LM = loadCart(dir);
+  const s = LM.freshState('buggy');
+  LM.addToCart(s, 'mug', 1);
+  LM.addToCart(s, 'hoodie', 1);
+  LM.applyDiscount(s, 'KANE10');
+  LM.pay(s);
+  LM.pay(s);
+  assert.equal(s.orders.length, 1, 'live-loop working copy still double-charges');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// Scripted Kane for the misstep path: the O1 replay is green; the
+// sweep fails on an agent misstep (710). The loop must stop without a
+// fix and without consuming the fix budget.
+function scriptedSpawnKaneMisstep(calls) {
+  return function mockSpawnKane(opts, done) {
+    calls.push(opts.args.slice());
+    if (opts.args[0] === 'testmd') {
+      done({ exitCode: 0, stdout: greenTestmd('live-replay-1'), stderr: '', durationMs: 18000, timedOut: false });
+      return;
+    }
+    done({ exitCode: 1, stdout: misstepSweep('live-sweep-1'), stderr: '', durationMs: 200000, timedOut: false });
+  };
+}
+
+check('live loop: an agent-misstep sweep (710) stops without a fix and without consuming the fix budget', () => {
+  const dir = freshRoot();
+  const journal = path.join(dir, 'journal.jsonl');
+  const gate = createGate({ objectiveHash: 'o1-loopmart-checkout', testFileHash: null });
+  const calls = [];
+  let result = null;
+  runLiveGate({
+    gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
+    preflight: mockPreflight, liveChecks: mockLiveChecksOk,
+    spawnKane: scriptedSpawnKaneMisstep(calls),
+  }, (r) => { result = r; });
+  assert.ok(result, 'done() must be called');
+  assert.equal(result.state, 'PROVISIONAL_DONE', 'a misstep does not human-block the claim');
+  assert.equal(result.fixDispatched, undefined, 'no fixer dispatched');
+  assert.equal(calls.length, 2, 'exactly 2 Kane spawns: green replay + misstep sweep, then stop');
+  assert.deepEqual(calls.map((c) => c[0]), ['testmd', 'run']);
+  const lines = fs.readFileSync(journal, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  assert.equal(lines.length, 2, 'two journal lines: replay pass, misstep sweep');
+  assert.equal(lines[1].classifier, 'AGENT_MISSTEP');
+  assert.equal(lines[1].decision, 'agent-misstep');
+  assert.equal(gate.attemptsPerClaim, 0, 'the fix budget is untouched');
+  assert.equal(gate.state, 'PROVISIONAL_DONE');
+
+  // Nothing was patched: the working copy still double-charges.
+  const LM = loadCart(dir);
+  const s = LM.freshState('buggy');
+  LM.addToCart(s, 'mug', 1);
+  LM.addToCart(s, 'hoodie', 1);
+  LM.pay(s);
+  LM.pay(s);
+  assert.equal(s.orders.length, 2, 'a misstep must not patch the app');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

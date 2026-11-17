@@ -67,7 +67,7 @@ for l in open("/tmp/kane-video/npm-test-output2.txt"):
     if "tests passed" in l:
         lines.append(l.strip())
 body = '<span class="cmd">$ npm test</span>\n' + "\n".join(lines)
-body += '\n<span class="ok">100/100 passing — exit 0</span>'
+body += '\n<span class="ok">104/104 passing — exit 0</span>'
 write("f-terminal-npmtest", page("npm test", f"<pre>{body}</pre>"))
 
 # ---- 3. real run_ends (trimmed) ----
@@ -142,6 +142,6 @@ that blocks on a diff, not on a claim.</p>
 
 <span class="cmd">$ npm install -g github:OlsOls4/kane-loop</span>
 
-<span class="ok">100 tests · 16 live runs · 820.68 credits spent</span></pre>"""))
+<span class="ok">100 tests · 20 live runs · 897.68 credits · LOOP_VERIFIED</span></pre>"""))
 
 print("wrote", sorted(os.listdir(OUT)))

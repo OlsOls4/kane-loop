@@ -36,7 +36,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { validateFix, ALLOW_LISTED_FILES } = require('./classifier.js');
+const { validateFix, ALLOW_LISTED_FILES, bugStrategy } = require('./classifier.js');
 const { runSweep } = require('./sweep.js');
 
 function sha256(text) {
@@ -263,21 +263,16 @@ function fixPromptFor(parsed) {
 }
 
 function strategyFor(parsed) {
-  const step = (parsed.failingStep && parsed.failingStep.step) || '';
-  const remark = (parsed.failingStep && parsed.failingStep.remark) || '';
-  const text = (step + ' ' + remark).toLowerCase();
-  // G1 first: a ledger wiped by "Start new order" is distinctive
-  // (gone / wiped / lost / only the second order survives). It is
-  // checked before the double-charge pattern because a G1 remark can
-  // mention "2 orders" ("expected 2 orders, found 1") without any
-  // double charge having happened.
-  if (/start new order/.test(text) && /ledger/.test(text)) return 'g1-ledger';
-  if (/ledger/.test(text) && /(wiped|gone|lost|missing|disappeared|cleared|only (the second|one) order)/.test(text)) return 'g1-ledger';
-  // Double-charge: the ledger shows TWO orders FOR ONE checkout (or a
-  // second charge). The "for this checkout" qualifier matters: a
-  // remark that merely expects two orders is not a double charge.
-  if (/ledger/.test(text) && /(2 orders for (this|one) checkout|two charges|charged twice|double.?charge)/.test(text)) return 'double-charge';
-  return null;
+  // The bug-class markers live in classifier.js (bugStrategy) and are
+  // shared with the gate's evidence signature — the same evidence that
+  // identifies the bug for the signature must identify the fix
+  // strategy, or the gate would dispatch a fix for a bug it could not
+  // name. G1 is checked before double-charge there: a G1 remark can
+  // mention a second order id ("LOOP-1002") or "2 orders" without any
+  // double charge having happened, and a remark that merely expects
+  // two orders is not a double charge — the "for this checkout"
+  // qualifier matters.
+  return bugStrategy(parsed);
 }
 
 const STRATEGIES = {

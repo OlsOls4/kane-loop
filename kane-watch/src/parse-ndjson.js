@@ -24,6 +24,13 @@
  *    clean stream with no terminal event is DIDNT_START.
  *  - Exit 3 is timeout-or-cancelled for run/testmd, cancelled-only for
  *    testrun (INCONCLUSIVE there, not a flake).
+ *  - Agent misstep (17 Nov gate surgery): a failed run with result_code
+ *    710/720/750, or a verdict family of automation_bug with category
+ *    agent_misstep AND a real failing step, is AGENT_MISSTEP — Kane's
+ *    agent failed, not the app. It never reaches the fixer and never
+ *    consumes an app attempt. The replay-analyzer failures carry the
+ *    same family/category but no failing step and no result_code, so
+ *    they stay DIDNT_START (the failing-step guard above runs first).
  */
 
 const TERMINAL_BY_COMMAND = {
@@ -111,6 +118,14 @@ function parseNdjson(text, command, exitCode = null, durationMs = null) {
   const resultCode = Number.isFinite(coerced) ? coerced : null;
   const verdict = terminal ? terminal.verdict ?? null : null;
   const reason = terminal ? terminal.reason || null : null;
+  // Run-level text (B7 gate surgery 2, 17 Nov 2026): the run_end summary
+  // carries the canonical app evidence even when the failing step's
+  // remark does not (retry 3: all three sweeps' summaries cite "N
+  // charges for one checkout" + LOOP-1002; the failing steps' remarks
+  // were truncated or marker-free). The classifier reads these fields
+  // for bug evidence; they are null when the terminal event lacks them.
+  const summary = terminal ? terminal.summary || null : null;
+  const oneLiner = terminal ? terminal.one_liner || null : null;
   const creditsConsumed = terminal
     ? terminal.credits_consumed ?? terminal.credits ?? null
     : null;
@@ -135,6 +150,8 @@ function parseNdjson(text, command, exitCode = null, durationMs = null) {
     resultCode,
     verdict,
     reason,
+    summary,
+    oneLiner,
     creditsConsumed,
     testUrl,
     failingStep,
@@ -196,6 +213,24 @@ function classify(input) {
       return 'DIDNT_START';
     }
     if (!failingStep) return 'DIDNT_START';
+    // Agent misstep (17 Nov gate surgery — B7 retry-1 sweeps): result
+    // codes 710/720/750, or a verdict family of automation_bug with
+    // category agent_misstep, mean KANE'S AGENT failed, not the app.
+    // These are a distinct classification (AGENT_MISSTEP): never the
+    // fixer, never an app attempt. The verdict family alone is NOT
+    // enough — the replay-analyzer failures carry the same
+    // family/category but no failing step and no result_code, so they
+    // exit above as DIDNT_START and never reach this check.
+    if (resultCode === 710 || resultCode === 720 || resultCode === 750) {
+      return 'AGENT_MISSTEP';
+    }
+    if (verdict && typeof verdict === 'object') {
+      const family = String(verdict.family || '').toLowerCase();
+      const category = String(verdict.category || verdict.type || '').toLowerCase();
+      if (family === 'automation_bug' && category === 'agent_misstep') {
+        return 'AGENT_MISSTEP';
+      }
+    }
     const remarkText = String(failingStep.remark || '').toLowerCase();
     // TEST_BUG only on objective/element mismatch evidence — an
     // unresolved variable or an ambiguous objective. A missing element

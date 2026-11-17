@@ -16,12 +16,17 @@
  * and runs the real gate. It refuses to start when `kane-cli whoami`
  * shows not signed in — no silent hang on auth, no live run without
  * sign-in + credits. One save-triggered run loops until a terminal
- * state: a `replay` decision re-spawns Kane to confirm, a `fixer`
- * dispatch re-spawns the replay to prove the fix, and a replay pass
- * spawns the O2 sweep via `kane run` — only replay pass AND sweep
- * pass write LOOP_VERIFIED. (15 Nov fix: the old code spawned exactly
- * one testmd replay per save and handled only the `fixer` decision, so
- * LOOP_VERIFIED was unreachable in live mode.)
+ * state: a `replay` decision re-spawns Kane to confirm — by re-running
+ * the FAILING objective (17 Nov gate surgery: a sweep red confirms via
+ * a sweep re-run, because `testmd --url` is ignored and O1 cannot
+ * reproduce a double-click bug at all, so a replay can never confirm a
+ * sweep bug); a `fixer` decision dispatches the fix (from either leg —
+ * a sweep red's fixer decision used to fall through to a replay
+ * instead of dispatching) and re-spawns the replay to prove it; and a
+ * replay pass spawns the O2 sweep via `kane run` — only replay pass
+ * AND sweep pass write LOOP_VERIFIED. (15 Nov fix: the old code spawned
+ * exactly one testmd replay per save and handled only the `fixer`
+ * decision, so LOOP_VERIFIED was unreachable in live mode.)
  *
  * Dry-run mode (`--dry-run [fixture]`) drives the REAL wiring with the
  * seeded-bug fixture NDJSON: no Kane sign-in, no credits. Journal line,
@@ -96,6 +101,17 @@ function cdpArgs() {
     ? ['--cdp-endpoint', process.env.KANE_CLI_CDP_ENDPOINT] : [];
 }
 
+// The sweep must start at the checkout itself, not the site root: the
+// root redirects to /console.html, and the console's EXAMPLE banner
+// made a sweep agent distrust the ledger (B7 retry 1, sweep 3 —
+// "explicitly an example with no live Kane runs"). /index.html is the
+// checkout; a base that already names it is left alone.
+function checkoutUrl(base) {
+  if (!base) return base;
+  const stripped = String(base).replace(/\/+$/, '');
+  return stripped.endsWith('/index.html') ? stripped : stripped + '/index.html';
+}
+
 function buildKaneArgs(opts) {
   if (opts.command === 'testmd') {
     // Replay of the committed _test.md. No --url: the saved test carries
@@ -111,9 +127,10 @@ function buildKaneArgs(opts) {
     const objective = opts.objective
       || fs.readFileSync(path.join(opts.root || ROOT, 'tests', 'objectives', 'loopmart-chaos-sweep.objective.md'), 'utf8').trim();
     // --timeout 300: the measured O2 sweep took 180.5 s; the old 120 s
-    // cap would have killed it mid-run.
+    // cap would have killed it mid-run. --url is the checkout itself
+    // (/index.html), not the site root — see checkoutUrl().
     return ['run', objective, '--agent', '--headless',
-      '--bug-detection', 'continue', '--timeout', '300', '--url', opts.url].concat(cdpArgs());
+      '--bug-detection', 'continue', '--timeout', '300', '--url', checkoutUrl(opts.url)].concat(cdpArgs());
   }
   return ['run', opts.objective, '--agent', '--headless',
     '--bug-detection', 'continue', '--timeout', '300', '--url', opts.url].concat(cdpArgs());
@@ -183,17 +200,34 @@ function dryRun(opts) {
   }
 
   // 1. First red on the seeded bug (fixture NDJSON, exit 1, result_code 740).
+  // The fixture is a SWEEP red — the seeded double-charge as the chaos
+  // sweep catches it — so it is handled with kind 'sweep': the confirm
+  // must re-run the sweep, not the O1 replay (17 Nov gate surgery).
   // Credits are the PARSED fixture value (14), never a hardcoded 0:
   // the journal must record what the run reported.
   let parsed = parseNdjson(fixtureText, 'run', 1, 54000);
-  let h = gate.handle(parsed, { kind: 'run' });
-  log({ trigger: 'dry-run', classification: parsed.classification, decision: h.decision.action, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: 1, terminalEvent: 'run_end', status: 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, notes: 'dry-run: seeded double-charge fixture; first red, confirm-before-fix replay' });
+  let h = gate.handle(parsed, { kind: 'sweep' });
+  log({ trigger: 'dry-run', classification: parsed.classification, decision: h.decision.action, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: 1, terminalEvent: 'run_end', status: 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, notes: 'dry-run: seeded double-charge fixture (sweep red); first red, confirm-before-fix sweep re-run' });
+  if (h.confirmVia !== 'sweep') {
+    console.log(trace.join('\n'));
+    console.log('DRY-RUN FAILED: expected the sweep red to confirm via a sweep re-run, got ' + h.confirmVia);
+    return 1;
+  }
 
-  // 2. Confirm replay: the same red again (same step — the signature
-  //    hashes the step, not the remark, so a reworded remark still matches).
-  parsed = parseNdjson(fixtureText, 'run', 1, 54000);
-  h = gate.handle(parsed, { kind: 'run' });
-  log({ trigger: 'dry-run', classification: parsed.classification, decision: h.decision.action, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: 1, terminalEvent: 'run_end', status: 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, notes: 'dry-run: second identical red, fixer dispatched' });
+  // 2. Confirm re-run: the same bug, caught at a DIFFERENT failing
+  //    step (the realistic agent variance — B7 retry 1 failed the same
+  //    double-charge at steps 30, 12 and 19). The evidence signature
+  //    keys on the bug (740 + double-charge markers), not the step, so
+  //    this still matches the first red and the fixer dispatches. The
+  //    alt-step companion fixture is used whenever the red fixture is
+  //    the seeded double-charge one; a custom --dry-run fixture
+  //    re-parses itself (no companion exists for it).
+  const confirmFixturePath = (!opts.fixture || path.resolve(opts.fixture) === path.resolve(DEFAULT_FIXTURE))
+    ? path.join(ROOT, 'kane-watch', 'test', 'fixtures', 'seeded-double-charge-alt-step.ndjson')
+    : fixturePath;
+  parsed = parseNdjson(fs.readFileSync(confirmFixturePath, 'utf8'), 'run', 1, 62000);
+  h = gate.handle(parsed, { kind: 'sweep' });
+  log({ trigger: 'dry-run', classification: parsed.classification, decision: h.decision.action, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: 1, terminalEvent: 'run_end', status: 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, notes: 'dry-run: second red at a different step, same bug evidence (740 + double-charge) — fixer dispatched' });
   if (h.decision.action !== 'fixer') {
     console.log(trace.join('\n'));
     console.log('DRY-RUN FAILED: expected a fixer dispatch, got ' + h.decision.action);
@@ -329,20 +363,25 @@ function defaultLiveChecks(opts, cb) {
 
 /**
  * One save-triggered live loop run. Loops until a terminal state:
- *   - `replay` decision -> re-spawn Kane to confirm (confirm-before-fix);
- *   - `fixer` decision  -> dispatch the fix, then re-spawn the replay
- *     to prove it (replay-first, docs §6–§7);
+ *   - `replay` decision -> re-spawn Kane to confirm (confirm-before-fix),
+ *     by re-running the FAILING objective: a sweep red confirms via a
+ *     sweep re-run, a replay red via the replay (17 Nov gate surgery);
+ *   - `fixer` decision  -> dispatch the fix (from either leg), then
+ *     re-spawn the replay to prove it (replay-first, docs §6–§7) —
+ *     unless stopAfterFix is set, in which case the run ends here with
+ *     fixDispatched, for a redeploy before any verification run;
  *   - replay PASS       -> spawn the O2 sweep via `kane run`;
  *   - sweep PASS        -> LOOP_VERIFIED (replay + independent pass);
- *   - setup / test-fix / human-blocked / CHEAT_REJECTED -> stop.
- * A sweep failure routes like any red (replay/fixer), so a bug the
- * sweep catches is confirmed and fixed the same way. The loop is
- * bounded by the gate's own caps (replay cap 2, per-signature 3,
- * per-claim 5) plus a hard cap on Kane spawns per save-triggered run.
+ *   - setup / test-fix / agent-misstep / human-blocked / CHEAT_REJECTED -> stop.
+ * A sweep failure routes like any red (confirm via sweep re-run, then
+ * fixer), so a bug the sweep catches is confirmed and fixed the same
+ * way. The loop is bounded by the gate's own caps (replay cap 2,
+ * per-signature 3, per-claim 5) plus a hard cap on Kane spawns per
+ * save-triggered run.
  *
  * `opts`: { gate, journalPath, root, url, testFileHash,
  *   preflight, spawnKane, sweepMode ('kane' | 'local'), maxSpawns,
- *   liveChecks }.
+ *   liveChecks, stopAfterFix }.
  * `preflight` / `spawnKane` / `liveChecks` are injectable so the live loop
  * is testable with a mocked Kane (kane-watch/test/run-live-loop.cjs) — no
  * sign-in, no credits, no real run. When `sweepMode` is 'local', the sweep runs
@@ -366,6 +405,12 @@ function runLiveGate(opts, done) {
   let seq = 0;
   let spawns = 0;
   let lastWasReplayPass = false;
+  // Confirm routing (17 Nov gate surgery): a 'replay' decision after a
+  // sweep red means re-run the SWEEP, not the replay — the replay
+  // cannot confirm a sweep bug (testmd --url is ignored; O1 cannot
+  // reproduce a double-click bug at all). Set from the gate's
+  // confirmVia on every 'replay' decision, consumed by iterate().
+  let confirmVia = null;
 
   function journal(entry) {
     seq += 1;
@@ -388,8 +433,47 @@ function runLiveGate(opts, done) {
       done({ state: gate.state, capped: true });
       return;
     }
-    if (lastWasReplayPass && !gate.independentPass) spawnSweep(iterate);
+    if (confirmVia === 'sweep') {
+      confirmVia = null;
+      spawnSweep(iterate, true);
+      return;
+    }
+    if (lastWasReplayPass && !gate.independentPass) spawnSweep(iterate, false);
     else spawnReplay(iterate);
+  }
+
+  // Dispatch the fixer for one APP_BUG verdict (shared by the replay
+  // and sweep handlers — a sweep red's fixer decision used to fall
+  // through to a replay instead of dispatching, so the fix path was
+  // unreachable from the leg that actually catches the bug). Journals
+  // the dispatch (or the failure / CHEAT_REJECTED), then calls next()
+  // — unless stopAfterFix is set, in which case the run ends here with
+  // fixDispatched: the live build still serves the old code until a
+  // redeploy, so re-running against it would only burn credits.
+  function dispatchFixStep(parsed, next) {
+    lastWasReplayPass = false;
+    console.log('FIX PROMPT (audit record — applied by the loop itself, not sent to an external agent): ' + JSON.stringify(fixPromptFor(parsed)));
+    const fix = dispatchFix(parsed, root);
+    if (!fix.ok && fix.cheatRejected) {
+      gate.state = 'CHEAT_REJECTED';
+      journal({ trigger: 'save', classification: 'APP_BUG', decision: 'fixer', verdict: 'CHEAT_REJECTED', notes: 'fix rejected by contract: ' + (fix.violations || []).join('; ') });
+      console.log('CHEAT_REJECTED: ' + (fix.violations || []).join('; '));
+      done({ state: gate.state });
+      return;
+    }
+    if (!fix.ok) {
+      journal({ trigger: 'save', classification: 'APP_BUG', decision: 'fixer', verdict: gate.state, notes: 'live: fixer failed: ' + fix.reason + (fix.rolledBack ? ' (rolled back)' : '') });
+      console.log('fixer failed: ' + fix.reason + (fix.rolledBack ? ' (rolled back)' : ''));
+    } else {
+      journal({ trigger: 'save', classification: 'APP_BUG', decision: 'fixer', verdict: gate.state, shaBefore: fix.shaBefore['loopmart/cart.js'], shaAfter: fix.shaAfter['loopmart/cart.js'], notes: 'live: fix applied: ' + fix.strategy });
+      console.log('fix applied: ' + fix.strategy);
+      if (o.stopAfterFix) {
+        console.log('fix applied — stopping here for the redeploy (stopAfterFix); re-run the gate after the fix is live to verify');
+        done({ state: gate.state, fixDispatched: true });
+        return;
+      }
+    }
+    next();
   }
 
   function spawnReplay(next) {
@@ -407,27 +491,10 @@ function runLiveGate(opts, done) {
       journal({ trigger: 'save', classification: parsed.classification, decision: decision, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: res.exitCode, terminalEvent: parsed.terminalEvent, status: parsed.status, creditsConsumed: parsed.creditsConsumed, durationMs: res.durationMs, testUrl: parsed.testUrl, verdict: h.state, passKind: replayAccepted ? 'replay' : null, passRunId: replayAccepted ? rid : null, testFileHash: hash, inputs: REPLAY_INPUTS, notes: 'live testmd replay' + (parsed.classification === 'PASS' && !replayAccepted ? ' — pass REJECTED by gate: ' + (h.lastPassRejected ? h.lastPassRejected.reason : 'provenance') : '') });
       console.log('run -> ' + parsed.classification + ' -> ' + h.decision.action + ' [' + h.state + ']');
       if (h.decision.action === 'fixer') {
-        lastWasReplayPass = false;
-        console.log('FIX PROMPT (audit record — applied by the loop itself, not sent to an external agent): ' + JSON.stringify(fixPromptFor(parsed)));
-        const fix = dispatchFix(parsed, root);
-        if (!fix.ok && fix.cheatRejected) {
-          gate.state = 'CHEAT_REJECTED';
-          journal({ trigger: 'save', classification: 'APP_BUG', decision: 'fixer', verdict: 'CHEAT_REJECTED', notes: 'fix rejected by contract: ' + (fix.violations || []).join('; ') });
-          console.log('CHEAT_REJECTED: ' + (fix.violations || []).join('; '));
-          done({ state: gate.state });
-          return;
-        }
-        if (!fix.ok) {
-          journal({ trigger: 'save', classification: 'APP_BUG', decision: 'fixer', verdict: gate.state, notes: 'live: fixer failed: ' + fix.reason + (fix.rolledBack ? ' (rolled back)' : '') });
-          console.log('fixer failed: ' + fix.reason + (fix.rolledBack ? ' (rolled back)' : ''));
-        } else {
-          journal({ trigger: 'save', classification: 'APP_BUG', decision: 'fixer', verdict: gate.state, shaBefore: fix.shaBefore['loopmart/cart.js'], shaAfter: fix.shaAfter['loopmart/cart.js'], notes: 'live: fix applied: ' + fix.strategy });
-          console.log('fix applied: ' + fix.strategy);
-        }
-        next();
+        dispatchFixStep(parsed, next);
         return;
       }
-      if (h.decision.action === 'replay') { lastWasReplayPass = false; next(); return; }
+      if (h.decision.action === 'replay') { confirmVia = h.confirmVia || 'replay'; lastWasReplayPass = false; next(); return; }
       if (h.decision.action === 'none' && parsed.classification === 'PASS') {
         // A pass the gate REJECTED (provenance — e.g. changed test
         // hash, healed test suspected) is not a replay pass: do not
@@ -446,7 +513,7 @@ function runLiveGate(opts, done) {
     });
   }
 
-  function spawnSweep(next) {
+  function spawnSweep(next, isConfirm) {
     if (sweepMode === 'local') {
       // No Kane spawn: the local deterministic probes, labelled
       // LOCAL-SWEEP in the journal — never presented as a Kane run.
@@ -472,12 +539,15 @@ function runLiveGate(opts, done) {
       const h = gate.handle(parsed, { kind: 'sweep', runId: rid, inputs: SWEEP_INPUTS });
       const accepted = parsed.classification === 'PASS' && h.independentPass && h.independentPass.runId === rid;
       const decision = accepted ? 'sweep' : h.decision.action;
-      journal({ trigger: 'save', classification: parsed.classification, decision: decision, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: res.exitCode, terminalEvent: parsed.terminalEvent, status: parsed.status, creditsConsumed: parsed.creditsConsumed, durationMs: res.durationMs, testUrl: parsed.testUrl, verdict: h.state, passKind: accepted ? 'sweep' : null, passRunId: accepted ? rid : null, inputs: SWEEP_INPUTS, notes: 'live O2 chaos sweep (kane run)' });
+      journal({ trigger: 'save', classification: parsed.classification, decision: decision, signature: h.signature, attemptNo: h.attemptsBySignature, attemptsPerClaim: h.attemptsPerClaim, exitCode: res.exitCode, terminalEvent: parsed.terminalEvent, status: parsed.status, creditsConsumed: parsed.creditsConsumed, durationMs: res.durationMs, testUrl: parsed.testUrl, verdict: h.state, passKind: accepted ? 'sweep' : null, passRunId: accepted ? rid : null, inputs: SWEEP_INPUTS, notes: isConfirm ? 'live O2 chaos sweep (kane run) — confirm re-run of the sweep red' : 'live O2 chaos sweep (kane run)' });
       console.log('sweep -> ' + parsed.classification + ' -> ' + h.decision.action + ' [' + h.state + ']');
       lastWasReplayPass = false;
       if (h.state === 'LOOP_VERIFIED') { done({ state: h.state }); return; }
-      // A sweep red routes like any red: confirm with the replay, then fix.
-      if (h.decision.action === 'replay' || h.decision.action === 'fixer') { next(); return; }
+      // A sweep red routes like any red — but the confirm re-runs the
+      // SWEEP (confirmVia), and a fixer decision dispatches from here,
+      // not from a replay (17 Nov gate surgery).
+      if (h.decision.action === 'fixer') { dispatchFixStep(parsed, next); return; }
+      if (h.decision.action === 'replay') { confirmVia = h.confirmVia || 'sweep'; next(); return; }
       done({ state: gate.state });
     });
   }
@@ -518,7 +588,7 @@ function watch(opts) {
   if (restored.independentPass) gate.independentPass = restored.independentPass;
 
   const runner = createRunner((done) => {
-    runLiveGate({ gate: gate, journalPath: journalPath, root: ROOT, url: url, testFileHash: hash }, () => done());
+    runLiveGate({ gate: gate, journalPath: journalPath, root: ROOT, url: url, testFileHash: hash, stopAfterFix: opts.stopAfterFix }, () => done());
   }, {});
   fs.watch(path.join(ROOT, 'loopmart'), { recursive: true }, (event, filename) => {
     if (filename) runner.save('loopmart/' + filename);
@@ -539,6 +609,7 @@ function printHelp() {
     '  --workdir <dir>   working copy for the fixer (dry-run default: a temp dir)',
     '  --journal <path>  journal file (default: journal.jsonl)',
     '  --url <url>       LoopMart URL for live runs (default: http://localhost:8080)',
+    '  --stop-after-fix  end the run after the fixer dispatches (redeploy before verifying)',
     '',
     'Dry-run acceptance: node kane-watch/kane-watch.js --dry-run',
     '  kane-watch/test/fixtures/seeded-double-charge.ndjson',
@@ -558,6 +629,7 @@ function main() {
     if (args[i] === '--workdir') opts.workdir = args[i + 1];
     if (args[i] === '--journal') opts.journal = args[i + 1];
     if (args[i] === '--url') opts.url = args[i + 1];
+    if (args[i] === '--stop-after-fix') opts.stopAfterFix = true;
   }
   if (opts.dryRun) return dryRun(opts);
   watch(opts);

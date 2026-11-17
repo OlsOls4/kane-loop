@@ -1,0 +1,7 @@
+{"type":"stream_start","session_id":"sess-seeded-002"}
+{"step":"Go to the LoopMart page","status":"done","remark":"Page loaded, three products visible, cart empty."}
+{"step":"Add 2 Kane Notebooks and 1 Loop Mug to the cart","status":"done","remark":"Cart shows 2 notebooks and 1 mug, subtotal £35.00."}
+{"step":"Apply discount code KANE10","status":"done","remark":"Discount minus £3.50, total £31.50."}
+{"step":"Click the Pay button twice in quick succession","status":"done","remark":"Confirmation shows order LOOP-1001."}
+{"step":"Verify the stock count for Kane Notebook has decreased by exactly 2","status":"failed","remark":"Ledger shows 2 orders for this checkout (LOOP-1001 and LOOP-1002); stock for Kane Notebook is 6 (expected 8) — the checkout was charged twice."}
+{"type":"run_end","status":"failed","summary":"Chaos sweep failed: the ledger shows two orders for one checkout.","one_liner":"Double charge: 2 ledger orders for one checkout.","reason":"Assertion failed at stock verification step.","duration":62000,"credits_consumed":14,"final_state":{"total":"£31.50"},"test_url":"https://example.invalid/test-manager/loopmart-chaos-sweep","session_dir":"/tmp/kane/sess-seeded-002","result_code":740,"verdict":{"confirmed_bug":true,"type":"double_charge","severity":"high"}}

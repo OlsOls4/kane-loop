@@ -6,10 +6,10 @@ Caption text is the narration verbatim, word-wrapped at 42 chars/line.
 Re-run after any re-recording, with the new measured durations.
 Also prints the exact word count of the recorded narration.
 
-Measured durations (ffprobe, 15 Nov 22:1x):
-  seg1 18.240, seg2 21.168, seg3 25.632, seg4 25.968,
-  seg5 21.960, seg6 29.088, seg7 9.432; gaps 0.5s x6.
-  Total 154.488s.
+Measured durations (ffprobe, v3 17 Nov):
+  seg1 18.240, seg2 21.168, seg3 25.632, seg4 35.040,
+  seg5 21.960, seg6 37.368, seg7 11.760; gaps 0.5s x6.
+  Total 174.168s.
 """
 import textwrap
 
@@ -39,31 +39,33 @@ SEGS = [
         "Result code seven-four-zero.",
         "One fix later, the core flow went green.",
     ]),
-    ("seg4-output", 66.540, 25.968, [
+    ("seg4-output", 66.540, 35.040, [
         "The loop itself runs on real output.",
         "One hundred tests pass — parser, classifier, the checkout, the fixer, the sweep.",
-        "Sixteen live runs, eight hundred twenty credits spent — every number on screen is a real result.",
+        "Twenty live runs, eight hundred ninety-eight credits spent — every number on screen is a real result.",
         "Then Kane ran the checkout live, and the ledger check failed: the same order charged twice.",
         "Result code seven-four-zero — the classifier's verdict, not a claim from the app.",
         "The gate needs two greens before it calls anything verified: the same test replayed, and a fresh sweep that works the total out itself.",
     ]),
-    ("seg5-fix", 93.008, 21.960, [
+    ("seg5-fix", 102.080, 21.960, [
         "The fix is one patch, twenty-eight lines across two files — a single-flight guard and an idempotency guard.",
         "The loop applies its own bounded patch for the bug class: one patch, no test edits.",
         "Toggle the mode and the same double-click charges once.",
         "What you are seeing is the fixed build.",
     ]),
-    ("seg6-live", 115.468, 29.088, [
+    ("seg6-live", 124.540, 37.368, [
         "So what happened?",
         "Kane ran the checkout live.",
         "The core flow passed, and the chaos sweep went green on retry: one order, result code one hundred.",
         "Same test, same checkout — and Kane checked it a second, independent way.",
-        "One hundred tests, sixteen live runs, two independent green verdicts.",
+        "One hundred tests, twenty live runs, two independent green verdicts.",
         "And the ledger now survives a new order — verified live.",
-        "Replay unproven — Kane's analyzer failed four times, not the app.",
+        "A save fired the gate: replay passed on the minus-eight test, sweep passed — loop verified.",
+        "One caveat: the older test file still trips Kane's analyzer — a Kane-side bug, not ours.",
     ]),
-    ("seg7-end", 145.056, 9.432, [
+    ("seg7-end", 162.408, 11.760, [
         "Kane Loop: a watcher any agent can install in one command, that blocks on a diff, not on a claim.",
+        "Twenty live runs, loop verified.",
         "Try it — one link, one command.",
         "Break it yourself.",
     ]),

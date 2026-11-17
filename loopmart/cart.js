@@ -168,13 +168,14 @@
     if (cartLines(state).length === 0) {
       return { charged: false, order: null, duplicate: false, reason: 'empty-cart' };
     }
+    // Re-armed 15 Nov (Wave 4 fix): the 15 Nov idempotency guard returned
+    // the existing confirmation in BOTH modes, so "Break it" could no
+    // longer re-arm the defect. The guard now applies in fixed mode only;
+    // buggy mode charges again (the seeded double-charge, exactly as the
+    // O2 sweep caught it live: LOOP-1001 + LOOP-1002). This comment sits
+    // above the branch on purpose: the fixer's anchor must match the
+    // confirmation branch contiguously (see kane-watch/src/fixer.js).
     if (state.confirmation) {
-      // Re-armed 15 Nov (Wave 4 fix): the 15 Nov idempotency guard
-      // returned the existing confirmation in BOTH modes, so "Break it"
-      // could no longer re-arm the defect. The guard now applies in
-      // fixed mode only; buggy mode charges again (the seeded
-      // double-charge, exactly as the O2 sweep caught it live:
-      // LOOP-1001 + LOOP-1002).
       if (state.mode === 'fixed') {
         return { charged: false, order: state.confirmation, duplicate: true };
       }
