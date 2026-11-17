@@ -38,16 +38,23 @@
   #latest-run pre { background: #0f172a; color: #a5f3fc; padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
   #timeline { display: flex; flex-direction: column; gap: 8px; counter-reset: tl; }
   .timeline-row { display: flex; align-items: center; gap: 12px; counter-increment: tl; text-align: left; width: 100%; font-size: 14px; font-weight: 600; padding: 10px 14px; background: #2a3a52; border: 1px solid #3b4a63; color: #e2e8f0; border-radius: 12px; }
-  .timeline-row::before { content: counter(tl); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #0d9488; color: #fff; font-size: 14px; font-weight: 800; }
+  .timeline-row::before { content: counter(tl); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #0f766e; color: #fff; font-size: 14px; font-weight: 800; }
   /* Pass/fail differentiation (Wave 4 fix): the number badge turns green
      on a pass and red on a fail, so a failed latest run never reads as
-     the headline — every row carries its own badge. */
+     the headline — every row carries its own badge.
+     Contrast (Wave 5, B14e): white on #16a34a was 3.30:1 and on #0d9488
+     3.74:1 — below WCAG AA 4.5:1. Darkened to #15803d (5.02:1) and
+     #0f766e (5.47:1). The fail badge #dc2626 (4.83:1) already passes. */
   .timeline-row.pass { border-left: 4px solid #16a34a; }
-  .timeline-row.pass::before { background: #16a34a; }
+  .timeline-row.pass::before { background: #15803d; }
   .timeline-row.fail { border-left: 4px solid #dc2626; }
   .timeline-row.fail::before { background: #dc2626; }
-  .timeline-row[aria-pressed="true"] { border: 2px solid #ff6b4a; background: #ff6b4a; color: #fff; }
-  .timeline-row[aria-pressed="true"]::before { background: #fff; color: #f04e30; }
+  /* Selected row (Wave 5, B14e): white on coral #ff6b4a was 2.82:1 and
+     the coral number on white 3.60:1 — both below AA. Dark text on the
+     coral fill (5.19:1); the number badge flips to dark with white text
+     (14.63:1). */
+  .timeline-row[aria-pressed="true"] { border: 2px solid #ff6b4a; background: #ff6b4a; color: #1e293b; }
+  .timeline-row[aria-pressed="true"]::before { background: #1e293b; color: #fff; }
   details#ndjson { margin-top: 16px; border: 1px solid #3b4a63; border-radius: 14px; padding: 12px 14px; background: #2a3a52; }
   details#ndjson summary { font-weight: 700; color: #fff; cursor: pointer; }
   details#ndjson pre { max-height: 240px; overflow: auto; background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 12px; }
@@ -65,21 +72,28 @@
 <a class="skip-link" href="#console">Skip to Loop Console</a>
 <header>
   <h1>Kane Loop — LoopMart</h1>
-  <p class="claim">A watcher any agent can install in one command, that blocks on a diff, not on a claim.</p>
-  <p class="muted">Demo victim: LoopMart, a tiny no-login checkout. Seeded bug disclosed. Install: <code>npm install -g github:OlsOls4/kane-loop</code> (bin entry <code>kane-watch</code>).</p>
+  <p class="claim">A watcher that only calls a change done after Kane verifies it in a real browser — replay plus an independent sweep, not a claim.</p>
+  <p class="muted">Kane caught a real double-charge bug live, the fix landed, and the gate re-ran green — read the verified run below.</p>
+  <p class="muted"><strong>Try it in 3 steps:</strong> 1 Break it → 2 see 2 orders → 3 read the LOOP_VERIFIED run below. No sign-in, no credits.</p>
+  <p class="muted"><strong>Try it (no sign-in):</strong> the checkout below works as-is — press “Break it” to arm the seeded double-charge, then double-click Pay and watch 2 orders appear. <strong>Live gate (needs a Kane account + credits):</strong> <code>npm install -g github:OlsOls4/kane-loop</code> (bin <code>kane-watch</code>), then sign in to Kane CLI — get Kane access at <a href="https://www.testmuai.com/register/">testmuai.com/register</a>. The gate also needs the LoopMart repo checked out and a local server running.</p>
+  <p class="muted">Repo: <a href="https://github.com/OlsOls4/kane-loop">github.com/OlsOls4/kane-loop</a> · Demo video: <a href="https://youtu.be/w1PQDDpR3hg">youtu.be/w1PQDDpR3hg</a></p>
 </header>
 
-<div id="strip" aria-live="polite">GREEN (substance): fresh O1 + independent O2 pass (result_code 100).
-  <span class="sub">Replay leg unproven — Kane analyzer fault (4 attempts). Live runs below.</span>
+<div id="strip" aria-live="polite">✓ LOOP_VERIFIED — 16 Nov 2026: replay 100 + independent sweep 100 · 20 runs · 897.68 credits
+  <span class="sub">Narrowed caveat: the earlier -6 test file still fails Kane's replay analyzer at step 18 (5×, Kane-side, app correct); the -8 test is the one that replays. Both files are byte-identical (md5 3b456b1e43b9bde825fc742a7f8c3392).</span>
 </div>
+
+<noscript>
+  <p><strong>✓ LOOP_VERIFIED — 16 Nov 2026: replay 100 + independent sweep 100 · 20 runs · 897.68 credits.</strong> Narrowed caveat: the earlier -6 test file still fails Kane's replay analyzer at step 18 (5×, Kane-side, app correct); the -8 test is the one that replays. Full live run data: <a href="console-data-live.json">console-data-live.json</a>. (JavaScript is off, so the checkout, timeline, and detail card are not interactive.)</p>
+</noscript>
 
 <div class="toolbar">
   <button class="primary" id="break-it-console" disabled>Break it — apply the double-charge bug</button>
-  <button id="replay-last" disabled>Replay last failure — local reproduction, no Kane run</button>
-  <span id="credits-line">479.24 credits spent 15 Nov (10,200 → 9,720.76 balance). run_end sum 353.36 — see the credits note for the reconciliation.</span>
+  <button id="replay-last" disabled>Re-run the double-charge scenario locally</button>
+  <span id="credits-line">897.68 credits spent 15–16 Nov (10,200 → 9,302.32). run_end credits sum 716.62 across the 13 runs that emitted one; the five analyzer-failed replays add 12.80 (balance delta, no run_end); the two -8 replays add 3.88 combined (balance delta, no run_end); the rest covers the VM-interrupted partial run (8.72), setup runs (33.12), and 122.54 of unreconciled Kane-side metering (balance deltas run above run_end on the big runs) — not itemised, not invented.</span>
 </div>
 
-<div id="example-banner">LIVE — 11 completed Kane CLI runs, 15 Nov 2026. Latest: live-gate replay failed (Kane analyzer, step 18) — 4th replay failure. Overall GREEN in substance (fresh O1 + independent O2 pass); replay leg unproven.</div>
+<div id="example-banner">LIVE — 20 completed Kane CLI runs, 15–16 Nov 2026 · ✓ LOOP_VERIFIED — 16 Nov 2026: replay 100 + independent sweep 100 · 20 runs · 897.68 credits. Fixed build is live; seeded bug armed only via ?mode=buggy / Break it.</div>
 
 <div class="columns">
   <section class="checkout" aria-label="LoopMart checkout">
@@ -94,7 +108,8 @@
     <div id="timeline"></div>
     <details id="ndjson">
       <summary>Raw NDJSON and logs</summary>
-      <p class="muted" id="ndjson-label">LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full run: <a href="https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7FZMPNNH44CNKSPZZ49W0S0/dashboard/share/US_HWQV7HIZR96U8TJ9U5J093AVNJKQP82E0IC5LX1FO0FTYQHXW7D9SII7KUD1ZFOY?type=summary&amp;agentView=true&amp;fqdn=summary-page">Test Manager — O2 green sweep</a>. The raw NDJSON lives in evidence/ locally (not deployed).</p>
+      <p class="muted" id="ndjson-label">LIVE run_end JSON (single run) — O2 green sweep, 16 Nov 2026 (result_code 100). Full run: <a href="https://test-manager.lambdatest.com/projects/01M7FTC1ZTKKK7C1HB161H8EN6/test-cases/01M7JY4W7N3WWGP90VXTQYNZ7X/dashboard/share/US_X23JU04H6H6WZ8GJFIBR31JOYRZS2HKV88JFJCIBGMOLX11C8L3P0QO77UYBD32N?type=summary&amp;agentView=true&amp;fqdn=summary-page">Test Manager — O2 green sweep</a>. The raw NDJSON lives in evidence/ locally (not deployed).</p>
+      <p class="muted" id="test-files">Replay test files: loopmart-o1-core-8_test.md — md5 3b456b1e43b9bde825fc742a7f8c3392, sha256 8dfb328974c1d5ea2… (The replay file the gate points at; replays clean (100, 16 Nov).) · loopmart-o1-core-6_test.md — md5 3b456b1e43b9bde825fc742a7f8c3392, sha256 8dfb328974c1d5ea2… (Byte-identical to the -8 file; still fails Kane's replay analyzer at step 18 (5×, Kane-side).) The hash is content-only and filename-blind.</p>
       <pre id="ndjson-body">Loading…</pre>
       <p><button id="copy-ndjson">Copy</button></p>
     </details>

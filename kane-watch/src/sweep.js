@@ -24,9 +24,16 @@
  * (tests/objectives/loopmart-chaos-sweep.objective.md). Probe results
  * are labelled by how they were produced; nothing here claims a live run.
  *
- * Probes 1–6 are the gate's independent check. Probe 7 is the disclosed
- * genuine defect G1 (Start new order wipes the ledger): it FAILS by
- * design and is reported separately, excluded from the pass.
+ * Probes 1–5 are the gate's independent check (core 5/5). P6 is a
+ * disclosed NON-PROBE, not a check: it asserts a fresh state is empty,
+ * which is true by construction (freshState() starts empty), so it can
+ * never fail — counting it would inflate "core 6/6" to a tautology. It
+ * still runs and is reported, labelled nonProbe, excluded from the
+ * pass. P3 is fixture-only (local pure logic, buggy mode — not a live
+ * browser run). Probe 7 is the disclosed genuine defect G1 (Start new
+ * order wipes the ledger): it fails on the frozen pre-fix fixture and
+ * passes on the G1-fixed shipped code, and is reported separately,
+ * excluded from the pass either way.
  */
 const path = require('node:path');
 
@@ -51,9 +58,9 @@ function runSweep(cartPath) {
   function probe(id, name, fn) {
     try {
       const r = fn();
-      probes.push({ id: id, name: name, expected: r.expected, actual: r.actual, pass: r.pass, note: r.note || null });
+      probes.push({ id: id, name: name, expected: r.expected, actual: r.actual, pass: r.pass, note: r.note || null, nonProbe: r.nonProbe || false });
     } catch (e) {
-      probes.push({ id: id, name: name, expected: null, actual: 'threw: ' + e.message, pass: false, note: null });
+      probes.push({ id: id, name: name, expected: null, actual: 'threw: ' + e.message, pass: false, note: null, nonProbe: false });
     }
   }
 
@@ -90,6 +97,8 @@ function runSweep(cartPath) {
   });
 
   // P3 — double-click Pay: exactly one order, notebook stock −2, no other stock changed.
+  // Fixture-only: runs in buggy mode against local pure logic (cart.js),
+  // not a live browser run — the live version is the O2 Kane sweep.
   probe('double-click-pay', 'double-click Pay: exactly 1 order, notebook stock −2, others unchanged', () => {
     const s = LM.freshState('buggy'); // sweep runs against the app as-is; the bug must fail it
     LM.addToCart(s, 'notebook', 2);
@@ -101,6 +110,7 @@ function runSweep(cartPath) {
       expected: '1 order; stock notebook 8, mug 9, hoodie 10',
       actual: s.orders.length + ' order(s); stock notebook ' + s.stock.notebook + ', mug ' + s.stock.mug + ', hoodie ' + s.stock.hoodie,
       pass: s.orders.length === 1 && s.stock.notebook === 8 && s.stock.mug === 9 && s.stock.hoodie === 10,
+      note: 'Fixture-only: buggy mode against local pure logic (cart.js), not a live browser run.',
     };
   });
 
@@ -130,8 +140,12 @@ function runSweep(cartPath) {
     };
   });
 
-  // P6 — refresh mid-pay (local state-level check only): a fresh load has
-  // no phantom order. Browser refresh timing needs a live Kane run.
+  // P6 — refresh mid-pay: DISCLOSED NON-PROBE (Wave 5, B14d). A fresh
+  // load has no phantom order — but freshState() is empty by
+  // construction, so this can never fail; it is a tautology, not a
+  // check. It still runs and is reported, labelled nonProbe, and
+  // excluded from the core pass (core is honestly 5/5, not 6/6).
+  // Browser refresh timing needs a live Kane run.
   probe('refresh-mid-pay', 'fresh load after a payment started: no phantom order', () => {
     const before = LM.freshState('fixed');
     LM.addToCart(before, 'mug', 1);
@@ -141,14 +155,16 @@ function runSweep(cartPath) {
       expected: 'fresh load: 0 orders, no confirmation',
       actual: after.orders.length + ' order(s), confirmation ' + (after.confirmation ? 'present' : 'absent'),
       pass: after.orders.length === 0 && after.confirmation === null,
-      note: 'Local state-level check only; browser refresh timing needs a live Kane run.',
+      nonProbe: true,
+      note: 'NON-PROBE (disclosed): freshState() is empty by construction, so this cannot fail. Local state-level check only; browser refresh timing needs a live Kane run.',
     };
   });
 
   // P7 — KNOWN ISSUE G1 (genuine defect, retained and disclosed): two
   // sequential checkouts in one session should both stay in the ledger
-  // (spec §3.4), but Start new order wipes it. FAILS by design; excluded
-  // from the gate's pass and reported separately.
+  // (spec §3.4). On the frozen pre-fix fixture Start new order wipes
+  // it (fails); on the G1-fixed shipped code (15 Nov) it passes.
+  // Reported separately, excluded from the gate's pass either way.
   probe('ledger-persists-across-orders', 'G1 known issue: second checkout, ledger still shows both orders', () => {
     const s = LM.freshState('fixed');
     LM.addToCart(s, 'mug', 1);
@@ -156,15 +172,18 @@ function runSweep(cartPath) {
     LM.reset(s); // Start new order
     LM.addToCart(s, 'hoodie', 1);
     LM.pay(s);
+    const pass = s.orders.length === 2;
     return {
       expected: '2 orders in the ledger (LOOP-1001, LOOP-1002)',
       actual: s.orders.length + ' order(s) in the ledger (' + s.orders.map((o) => o.id).join(', ') + ')',
-      pass: s.orders.length === 2,
-      note: 'GENUINE DEFECT G1 (retained, disclosed): Start new order wipes the ledger.',
+      pass: pass,
+      note: pass
+        ? 'GENUINE DEFECT G1 (retained, disclosed): fixed in the shipped code 15 Nov — the ledger survives Start new order.'
+        : 'GENUINE DEFECT G1 (retained, disclosed): Start new order wipes the ledger — fails on the frozen pre-fix fixture.',
     };
   });
 
-  const core = probes.filter((p) => p.id !== 'ledger-persists-across-orders');
+  const core = probes.filter((p) => p.id !== 'ledger-persists-across-orders' && !p.nonProbe);
   const knownIssue = probes.find((p) => p.id === 'ledger-persists-across-orders');
   return {
     pass: core.every((p) => p.pass),

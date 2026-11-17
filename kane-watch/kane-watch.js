@@ -226,7 +226,7 @@ function dryRun(opts) {
   const sweep = runSweep(path.join(workdir, 'loopmart', 'cart.js'));
   parsed = parseNdjson(synthSweep(sweep.pass), 'run', sweep.pass ? 0 : 1, 50000);
   h = gate.handle(parsed, { kind: 'sweep', runId: 'dryrun-sweep-1', inputs: SWEEP_INPUTS });
-  log({ trigger: 'dry-run', classification: parsed.classification, decision: 'sweep', exitCode: sweep.pass ? 0 : 1, terminalEvent: 'run_end', status: sweep.pass ? 'passed' : 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, passKind: 'sweep', passRunId: 'dryrun-sweep-1', inputs: SWEEP_INPUTS, notes: 'dry-run: chaos sweep ' + (sweep.pass ? 'passed (core 6/6 probes)' : 'FAILED') + '; known-issue G1 excluded from the pass' });
+  log({ trigger: 'dry-run', classification: parsed.classification, decision: 'sweep', exitCode: sweep.pass ? 0 : 1, terminalEvent: 'run_end', status: sweep.pass ? 'passed' : 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, passKind: 'sweep', passRunId: 'dryrun-sweep-1', inputs: SWEEP_INPUTS, notes: 'dry-run: chaos sweep ' + (sweep.pass ? 'passed (core 5/5 probes)' : 'FAILED') + '; known-issue G1 excluded from the pass' });
 
   // Persist: state.json is derived from the journal, never the source of truth.
   const persisted = rebuildStateFromJournal(journalPath);
@@ -252,6 +252,9 @@ function writeConsoleData(outPath, journalPath, fix) {
     generated: new Date().toISOString(),
     mode: 'dry-run',
     verdict: 'EXAMPLE',
+    verdictLine: 'EXAMPLE — seeded example run (no live Kane runs yet).',
+    verdictCaveat: 'Press Break it to reproduce the double-charge locally; a live gate run writes LOOP_VERIFIED here.',
+    bannerNote: 'EXAMPLE — no live Kane runs yet. This console shows a seeded example run; press Break it to reproduce the double-charge locally.',
     credits: { spent: 0, balance: null, note: '0 credits — no live runs yet. Balance unknown — kane-cli balance not run.' },
     exampleRun: {
       run_id: 'EXAMPLE-001', trigger: 'seeded example', verdict: 'EXAMPLE',
@@ -453,7 +456,7 @@ function runLiveGate(opts, done) {
       const h = gate.handle(parsed, { kind: 'sweep', runId: rid, inputs: SWEEP_INPUTS });
       const accepted = parsed.classification === 'PASS' && h.independentPass && h.independentPass.runId === rid;
       const decision = accepted ? 'sweep' : h.decision.action;
-      journal({ trigger: 'save', classification: parsed.classification, decision: decision, exitCode: sweep.pass ? 0 : 1, terminalEvent: 'run_end', status: sweep.pass ? 'passed' : 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, passKind: accepted ? 'sweep' : null, passRunId: accepted ? rid : null, inputs: SWEEP_INPUTS, notes: 'LOCAL-SWEEP — local deterministic probes (core ' + (sweep.pass ? '6/6' : 'FAILED') + '), NOT a Kane run; known-issue G1 excluded' });
+      journal({ trigger: 'save', classification: parsed.classification, decision: decision, exitCode: sweep.pass ? 0 : 1, terminalEvent: 'run_end', status: sweep.pass ? 'passed' : 'failed', creditsConsumed: parsed.creditsConsumed, verdict: h.state, passKind: accepted ? 'sweep' : null, passRunId: accepted ? rid : null, inputs: SWEEP_INPUTS, notes: 'LOCAL-SWEEP — local deterministic probes (core ' + (sweep.pass ? '5/5' : 'FAILED') + '), NOT a Kane run; known-issue G1 excluded' });
       console.log('sweep (local) -> ' + parsed.classification + ' -> ' + h.decision.action + ' [' + h.state + ']');
       lastWasReplayPass = false;
       if (h.state === 'LOOP_VERIFIED') { done({ state: h.state }); return; }

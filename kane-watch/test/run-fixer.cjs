@@ -13,7 +13,7 @@ const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { parseNdjson } = require('../src/parse-ndjson.js');
 const { validateFix } = require('../src/classifier.js');
-const { dispatchFix, rollbackFix, fixPromptFor, strategyFor } = require('../src/fixer.js');
+const { dispatchFix, rollbackFix, fixPromptFor, strategyFor, verifyPatchedCopy, verifyG1PatchedCopy } = require('../src/fixer.js');
 const { runSweep } = require('../src/sweep.js');
 
 let passed = 0;
@@ -210,6 +210,18 @@ check('rollback restores pre-patch contents byte-for-byte', () => {
   fs.rmSync(origDir, { recursive: true, force: true });
 });
 
+check('broken patched cart.js fails verification ({ok:false}) instead of crashing the watcher', () => {
+  const dir = freshWorkdir();
+  fs.writeFileSync(path.join(dir, 'loopmart', 'cart.js'), 'module.exports = { broken syntax here\n', 'utf8');
+  const v = verifyPatchedCopy(dir);
+  assert.equal(v.ok, false);
+  assert.ok(/does not load/.test(v.reason), 'reason names the load failure: ' + v.reason);
+  const g = verifyG1PatchedCopy(dir);
+  assert.equal(g.ok, false);
+  assert.ok(/does not load/.test(g.reason), 'reason names the load failure: ' + g.reason);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 check('fix prompt is fixed-format: failing step, remark, screenshot path, allow-list only', () => {
   const prompt = fixPromptFor(seededParsed());
   assert.deepEqual(Object.keys(prompt).sort(), ['allowListedFiles', 'failingStep', 'remark', 'screenshotPath']);
@@ -263,7 +275,7 @@ check('sweep on the unpatched copy fails the double-click probe; on the patched 
   assert.equal(dispatchFix(seededParsed(), dir).ok, true);
   const after = runSweep(path.join(dir, 'loopmart', 'cart.js'));
   assert.equal(after.pass, true, 'core probes must pass after the fix');
-  assert.equal(after.knownIssue.pass, false, 'G1 still fails by design and is reported separately');
+  assert.equal(after.knownIssue.pass, false, 'G1 still fails on this workdir (double-charge fix only) and is reported separately');
   assert.ok(/G1/.test(after.knownIssue.note));
   fs.rmSync(raw, { recursive: true, force: true });
   fs.rmSync(dir, { recursive: true, force: true });

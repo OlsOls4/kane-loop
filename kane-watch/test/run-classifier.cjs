@@ -91,6 +91,34 @@ check('synthetic app-bug run_end routes to fixer; flake routes to replay-only', 
   assert.equal(h2.state, 'HUMAN_BLOCKED');
 });
 
+check('analyzer failure (DIDNT_START with a terminal event) replays once, then blocks; upload-fail still goes to setup', () => {
+  // Mirrors the real -6 replay evidence (evidence/o1-green-replay-3rd-2026-11-15.ndjson):
+  // test_md_done failed, no verdict, no failing step event (the run_end
+  // carries reason "analyzer_failed: @ step 18" but is not the terminal
+  // for a testmd command, and no event carries a `step` field).
+  const analyzerText = JSON.stringify({ type: 'stream_start', run_id: 'sess-an-1', synthetic: true }) + '\n'
+    + JSON.stringify({ type: 'step_end', index: 18, status: 'failed', summary: 'analyze: Reading the displayed total from the cart summary' }) + '\n'
+    + JSON.stringify({ type: 'run_end', run_id: 'run-0', status: 'failed', reason: 'analyzer_failed: @ step 18' }) + '\n'
+    + JSON.stringify({ type: 'test_md_step_end', step_index: 1, status: 'failed' }) + '\n'
+    + JSON.stringify({ type: 'test_md_done', overall_status: 'failed', duration_s: 23, session_id: 'sess-an-1' }) + '\n';
+  const r = parse(analyzerText, 'testmd', 1, 23000);
+  assert.equal(r.classification, 'DIDNT_START');
+  assert.equal(r.terminalEvent, 'test_md_done');
+  const gate = createGate({ objectiveHash: 'o1' });
+  const h1 = gate.handle(r, { kind: 'replay' });
+  assert.equal(h1.decision.action, 'replay', 'first analyzer failure: one bounded replay, no code change');
+  assert.equal(h1.attemptsPerClaim, 0);
+  const h2 = gate.handle(r, { kind: 'replay' });
+  assert.equal(h2.decision.action, 'human-blocked', 'second consecutive analyzer failure blocks');
+  assert.equal(h2.state, 'HUMAN_BLOCKED');
+  // The carve-out: an upload/evidence/seal DIDNT_START still goes to
+  // setup, never to a replay — nothing verifiable ran.
+  const gate2 = createGate({ objectiveHash: 'o1' });
+  const upload = parse(stream(null, null, { status: 'failed', reason: 'evidence upload failed: seal error' }), 'run', 1);
+  assert.equal(upload.classification, 'DIDNT_START');
+  assert.equal(gate2.handle(upload, { kind: 'run' }).decision.action, 'setup');
+});
+
 check("didn't-start (exit 2, no run_end) and upload-fail exit 1 -> setup, no code change, no attempt", () => {
   const gate = createGate({ objectiveHash: 'o1' });
   const noStart = parseNdjson('{"type":"stream_start"}\n', 'run', 2, 2000);
@@ -231,6 +259,14 @@ check('fix contract: good patch passes; test edit, hard-coded total, big diff, d
   assert.equal(deleted.ok, false);
   const outside = validateFix([{ path: 'package.json', added: 1, removed: 0, content: 'x' }]);
   assert.equal(outside.ok, false);
+});
+
+check('fix contract: loopmart/server.cjs is rejected (allow-list membership, not just the loopmart/ prefix)', () => {
+  const server = validateFix([{ path: 'loopmart/server.cjs', added: 1, removed: 0, content: 'x' }]);
+  assert.equal(server.ok, false);
+  assert.ok(server.violations.some((v) => /allow-list/.test(v)));
+  const cart = validateFix([{ path: 'loopmart/cart.js', added: 1, removed: 0, content: 'x' }]);
+  assert.equal(cart.ok, true, 'allow-listed files still pass');
 });
 
 check('credit guard: fresh run that would spend the reserve is CREDIT_BLOCKED; replay (~0) is allowed', () => {

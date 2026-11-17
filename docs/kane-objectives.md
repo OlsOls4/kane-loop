@@ -53,7 +53,7 @@
 - **Expected `run_end` with the seeded double-charge bug active:** `status: failed`, exit 1 — failing step is the ledger/stock assertion (A4/A5), NOT the total assertion (A1–A3 still pass). That is the designed signature: correct total on screen, wrong money underneath.
 - **What a fail means:** if the failing step is A1–A3 (subtotal/discount/confirmation total) → a different bug from the seeded one (genuine bug — keep it, see `01` §5). If the failing step is A4/A5 → the seeded double-charge, or a genuine ledger/stock bug. The classifier in `03` §2 routes by failing step + `remark`, never by exit code alone.
 - **Run command (loop authoring, once):** `KANE_CLI_USER_AGENT=<agent> kane-cli run "<objective>" --agent --headless --name loopmart-checkout --timeout 120`
-- **Run command (loop replay, every iteration):** `KANE_CLI_USER_AGENT=<agent> kane-cli testmd run .testmuai/tests/loopmart-o1-core-6_test.md --agent --headless --no-adaptive-heal` — **verify `--no-adaptive-heal` exists on `testmd run` in the pinned CLI on Day 1**; it is a `testmd run` / `testrun run` flag only and does NOT apply to a fresh `kane run`. If it does not exist on the pinned version, the gate must use `kane run` with the saved test, or disable adaptive healing in config — and the README must say which. A healed test masking a regression destroys Verified.
+- **Run command (loop replay, every iteration):** `KANE_CLI_USER_AGENT=<agent> kane-cli testmd run .testmuai/tests/loopmart-o1-core-8_test.md --agent --headless --no-adaptive-heal` — **verify `--no-adaptive-heal` exists on `testmd run` in the pinned CLI on Day 1**; it is a `testmd run` / `testrun run` flag only and does NOT apply to a fresh `kane run`. If it does not exist on the pinned version, the gate must use `kane run` with the saved test, or disable adaptive healing in config — and the README must say which. A healed test masking a regression destroys Verified.
 
 ### O2 — Independent chaos / defect sweep (the second check)
 
@@ -74,7 +74,7 @@
 
 - **Slug:** none (no `--name`) — this is a replay of O1's saved test, not a new test.
 - **Purpose:** first red on a signature triggers an immediate zero-credit replay *before* any code change (engineers' correction, Wave 2). Only a second identical red dispatches the fixer. This stops a flaky red from causing a spurious "fix".
-- **Run command:** `KANE_CLI_USER_AGENT=<agent> kane-cli testmd run .testmuai/tests/loopmart-o1-core-6_test.md --agent --headless --no-adaptive-heal`
+- **Run command:** `KANE_CLI_USER_AGENT=<agent> kane-cli testmd run .testmuai/tests/loopmart-o1-core-8_test.md --agent --headless --no-adaptive-heal`
 - **Expected:** `test_md_done` with `overall_status: passed` → the first red was a flake; log `FLAKE → replay → PASS`, consume no attempt, make no code change. `overall_status: failed` with the same failing step → dispatch the fixer (see `03` §3).
 
 ### O4 — Paired experiment (gated vs ungated — borrowed method, credited)
@@ -97,7 +97,7 @@
 
 | Objective | Slug | File | Authoring cost | Replay cost | When it runs |
 |---|---|---|---|---|---|
-| O1 core checkout | `loopmart-checkout` | `.testmuai/tests/loopmart-o1-core-6_test.md` | 1 fresh run | ~0 (unchanged steps) | Author once (12–13 Nov); replay every loop iteration; gate run |
+| O1 core checkout | `loopmart-checkout` | `.testmuai/tests/loopmart-o1-core-8_test.md` | 1 fresh run | ~0 (unchanged steps) | Author once (12–13 Nov); replay every loop iteration; gate run. Re-wired -6 → -8 on 16 Nov 2026: -6 fails Kane's replay analyzer at step 18, 5×, Kane-side; the two files are byte-identical. |
 | O2 chaos sweep | `loopmart-chaos-sweep` | `tests/loopmart-chaos-sweep_test.md` | 1 fresh run | n/a (fresh each time) | Author once; fresh run once per genuine fix (after replay pass) |
 | O3 confirm replay | — | replays O1 | 0 | ~0 | On every first red, before any code change |
 | O4 paired experiment | `loopmart-ungated` | `tests/loopmart-ungated_test.md` | 1 fresh run | ~0 | Once, 15 Nov, against the ungated build |

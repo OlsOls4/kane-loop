@@ -56,7 +56,7 @@ check('sweep independence: a tampered price table fails independent-total (expec
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-check('sweep on the unpatched copy: independent-total passes, double-click fails, G1 fails by design', () => {
+check('sweep on the unpatched copy: independent-total passes, double-click fails, G1 fails on the frozen pre-fix fixture', () => {
   // The unpatched copy is the frozen buggy fixture: the fix has shipped,
   // so the live cart.js is patched and the sweep passes on it.
   const sweep = runSweep(path.join(__dirname, 'fixtures', 'buggy-loopmart', 'cart.js'));
@@ -66,22 +66,26 @@ check('sweep on the unpatched copy: independent-total passes, double-click fails
   assert.equal(byId['independent-total'].pass, true);
   assert.equal(byId['quantity-zero'].pass, true);
   assert.equal(byId['double-click-pay'].pass, false);
+  assert.ok(/Fixture-only/.test(byId['double-click-pay'].note), 'P3 is labelled fixture-only');
   assert.equal(byId['negative-quantity'].pass, true);
   assert.equal(byId['discount-reuse'].pass, true);
   assert.equal(byId['refresh-mid-pay'].pass, true);
-  assert.equal(byId['ledger-persists-across-orders'].pass, false, 'G1 fails by design');
+  assert.equal(byId['refresh-mid-pay'].nonProbe, true, 'P6 is a disclosed non-probe, not a check');
+  assert.ok(/NON-PROBE/.test(byId['refresh-mid-pay'].note));
+  assert.equal(byId['ledger-persists-across-orders'].pass, false, 'G1 fails on the frozen pre-fix fixture');
   assert.ok(/G1/.test(byId['ledger-persists-across-orders'].note));
   assert.equal(sweep.knownIssue.id, 'ledger-persists-across-orders');
 });
 
-check('sweep on the patched copy: core 6/6 pass, G1 still fails and stays excluded', () => {
+check('sweep on the patched copy: core 5/5 pass, G1 still fails and stays excluded', () => {
   const dir = freshWorkdir();
   const SEEDED = fs.readFileSync(path.join(__dirname, 'fixtures', 'seeded-double-charge.ndjson'), 'utf8');
   const parsed = parseNdjson(SEEDED, 'run', 1, 54000);
   assert.equal(dispatchFix(parsed, dir).ok, true);
   const sweep = runSweep(path.join(dir, 'loopmart', 'cart.js'));
   assert.equal(sweep.pass, true);
-  assert.equal(sweep.probes.filter((p) => p.id !== 'ledger-persists-across-orders').every((p) => p.pass), true);
+  assert.equal(sweep.probes.filter((p) => p.id !== 'ledger-persists-across-orders' && !p.nonProbe).length, 5, 'core is 5 probes (P6 excluded as a non-probe)');
+  assert.equal(sweep.probes.filter((p) => p.id !== 'ledger-persists-across-orders' && !p.nonProbe).every((p) => p.pass), true);
   assert.equal(sweep.knownIssue.pass, false);
   fs.rmSync(dir, { recursive: true, force: true });
 });

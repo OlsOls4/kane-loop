@@ -2,6 +2,20 @@
  "generated": "2026-11-16T19:47:28Z",
  "mode": "live",
  "verdict": "GREEN (literal): save-triggered gate run closed end-to-end live 16 Nov — replay pass (loopmart-o1-core-8, result_code 100) + independent O2 sweep pass (result_code 100) → LOOP_VERIFIED. The -6 test still fails the replay analyzer at step 18 (5th analyzer failure, Kane-side, app correct); the -8 test replays clean. G1 ledger-preserve verified live 15 Nov.",
+ "verdictLine": "✓ LOOP_VERIFIED — 16 Nov 2026: replay 100 + independent sweep 100 · 20 runs · 897.68 credits",
+ "verdictCaveat": "Narrowed caveat: the earlier -6 test file still fails Kane's replay analyzer at step 18 (5×, Kane-side, app correct); the -8 test is the one that replays. Both files are byte-identical (md5 3b456b1e43b9bde825fc742a7f8c3392).",
+ "testFiles": {
+  "loopmart-o1-core-8_test.md": {
+   "md5": "3b456b1e43b9bde825fc742a7f8c3392",
+   "sha256": "8dfb328974c1d5ea2ede59aebcbc4ef6e7b35b63aa87d6691111d19d6573da3d",
+   "note": "The replay file the gate points at; replays clean (100, 16 Nov)."
+  },
+  "loopmart-o1-core-6_test.md": {
+   "md5": "3b456b1e43b9bde825fc742a7f8c3392",
+   "sha256": "8dfb328974c1d5ea2ede59aebcbc4ef6e7b35b63aa87d6691111d19d6573da3d",
+   "note": "Byte-identical to the -8 file; still fails Kane's replay analyzer at step 18 (5×, Kane-side). The hash is content-only and filename-blind: it proves the content, not which file the gate points at."
+  }
+ },
  "credits": {
   "spent": 897.68,
   "balance": 9302.32,
@@ -760,5 +774,5 @@
   "loopmart/app.js — default timers bound to window (timer fix, 15 Nov)."
  ],
  "replayNote": "O1 replay of loopmart-o1-core-8 PASSED live 16 Nov (result_code 100, 33 actions, total £45.00 captured) — the replay leg is now proven, and the save-triggered gate closed end-to-end on it. The -6 test still fails the analyzer at step 18 (5 failures: steps 2, 2, 18, 18, 18; confirmed false; ~2.4–2.8 credits each). Full fresh-author runs cost ~54 credits measured — replays are not free.",
- "bannerNote": "LIVE — 20 completed Kane CLI runs, 15–16 Nov 2026. Latest: LOOP_VERIFIED 16 Nov — save-triggered gate closed end-to-end (replay 100 + O2 sweep 100, double-click Pay → 1 order, Notebook stock −2). Fixed build is live; seeded bug armed only via ?mode=buggy / Break it."
+ "bannerNote": "LIVE — 20 completed Kane CLI runs, 15–16 Nov 2026 · ✓ LOOP_VERIFIED — 16 Nov 2026: replay 100 + independent sweep 100 · 20 runs · 897.68 credits. Fixed build is live; seeded bug armed only via ?mode=buggy / Break it."
 }

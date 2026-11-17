@@ -4,7 +4,8 @@
  *
  * The fixer is NOT trusted by prompt. It has a small library of fix
  * strategies keyed by failure signature, applies anchor replacements to
- * allow-listed files only (loopmart/**), and the gate enforces the fix
+ * allow-listed files only (loopmart/cart.js, loopmart/app.js — the list
+ * lives in classifier.js, imported here), and the gate enforces the fix
  * contract (validateFix) before anything is re-run. A fix that fails
  * verification is rolled back to the pre-patch contents.
  *
@@ -18,9 +19,10 @@
  * - g1-ledger: "Start new order" must not wipe the ledger. cart.js
  *   reset() preserves state.orders (and the order-number counter)
  *   across a reset, so completed orders stay visible per spec §3.4.
- *   One file, two added lines. G1 stays UNFIXED in the shipped code
- *   so Kane has a real bug to catch — the strategy exists so the loop
- *   can fix it the moment Kane catches it live.
+ *   One file, two added lines. G1 was FIXED in the shipped code 15 Nov
+ *   (Wave 4 fix batch) and verified live (deploy-7 greens + the 16 Nov
+ *   gate sweep ran against the G1-fixed code); the strategy remains so
+ *   the loop can fix a regression the moment Kane catches one live.
  *
  * The loop IS the agent side for these bug classes: it applies a
  * validated reference patch itself (15 Nov correction — the earlier
@@ -34,10 +36,8 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { validateFix } = require('./classifier.js');
+const { validateFix, ALLOW_LISTED_FILES } = require('./classifier.js');
 const { runSweep } = require('./sweep.js');
-
-const ALLOW_LISTED_FILES = ['loopmart/cart.js', 'loopmart/app.js'];
 
 function sha256(text) {
   return crypto.createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
@@ -143,8 +143,16 @@ function buildG1Fix(workdir) {
 // P7 probe flips to pass), and the patched cart.js must load.
 function verifyG1PatchedCopy(workdir) {
   const cartPath = path.join(workdir, 'loopmart', 'cart.js');
-  delete require.cache[require.resolve(cartPath)];
-  const LM = require(cartPath);
+  // A syntactically broken patched cart.js used to crash the watcher
+  // (uncaught SyntaxError from require) — return { ok: false } so the
+  // fixer rolls back instead (Wave 5, B14b).
+  let LM;
+  try {
+    delete require.cache[require.resolve(cartPath)];
+    LM = require(cartPath);
+  } catch (e) {
+    return { ok: false, reason: 'patched cart.js does not load: ' + e.message };
+  }
   const s = LM.freshState('fixed');
   LM.addToCart(s, 'mug', 1);
   LM.pay(s);
@@ -194,8 +202,15 @@ function buildDoubleChargeFix(workdir) {
 // core probes must pass. A syntax check on the patched app.js runs too.
 function verifyPatchedCopy(workdir) {
   const cartPath = path.join(workdir, 'loopmart', 'cart.js');
-  delete require.cache[require.resolve(cartPath)];
-  const LM = require(cartPath);
+  // See verifyG1PatchedCopy: a broken patched cart.js must fail
+  // verification (and roll back), never crash the watcher (B14b).
+  let LM;
+  try {
+    delete require.cache[require.resolve(cartPath)];
+    LM = require(cartPath);
+  } catch (e) {
+    return { ok: false, reason: 'patched cart.js does not load: ' + e.message };
+  }
   for (const mode of ['buggy', 'fixed']) {
     const s = LM.freshState(mode);
     LM.addToCart(s, 'mug', 1);

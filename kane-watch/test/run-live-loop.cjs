@@ -60,6 +60,19 @@ function greenTestmd(runId) {
     + JSON.stringify({ type: 'test_md_done', overall_status: 'passed', duration_s: 18, session_id: runId, share_url: null, credits_consumed: 0 }) + '\n';
 }
 
+// Analyzer failure, mirroring the real -6 replay evidence
+// (evidence/o1-green-replay-3rd-2026-11-15.ndjson): test_md_done failed,
+// no verdict, no failing step event — the run_end reason is
+// "analyzer_failed: @ step 18" but run_end is not the terminal for a
+// testmd command. Classifies DIDNT_START with a terminal event.
+function analyzerTestmd(runId) {
+  return JSON.stringify({ type: 'stream_start', run_id: runId, synthetic: true, note: 'MOCKED analyzer failure — mirrors the real -6 replay evidence, not a real Kane run' }) + '\n'
+    + JSON.stringify({ type: 'step_end', index: 18, status: 'failed', summary: 'analyze: Reading the displayed total from the cart summary' }) + '\n'
+    + JSON.stringify({ type: 'run_end', run_id: 'run-0', status: 'failed', reason: 'analyzer_failed: @ step 18' }) + '\n'
+    + JSON.stringify({ type: 'test_md_step_end', step_index: 1, status: 'failed' }) + '\n'
+    + JSON.stringify({ type: 'test_md_done', overall_status: 'failed', duration_s: 23, session_id: runId }) + '\n';
+}
+
 function greenSweep(runId) {
   return JSON.stringify({ type: 'stream_start', run_id: runId, synthetic: true, note: 'MOCKED live sweep — scripted green run_end, not a real Kane run' }) + '\n'
     + JSON.stringify({ type: 'run_end', status: 'passed', reason: null, duration: 50000, credits_consumed: 7, test_url: null, synthetic: true }) + '\n';
@@ -156,6 +169,54 @@ check('live loop closes with mocked spawnKane: red -> replay -> fixer -> replay 
   LM.pay(s);
   LM.pay(s);
   assert.equal(s.orders.length, 1, 'live-loop working copy still double-charges');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// Scripted Kane: the first testmd replay fails on the analyzer (the -6
+// shape, DIDNT_START with a terminal event), the second is green; the
+// sweep (kane run) is green. B14a: the analyzer failure must re-spawn
+// once and still reach LOOP_VERIFIED, not stop the loop on setup.
+function scriptedSpawnKaneAnalyzerFirst(calls) {
+  let testmdCalls = 0;
+  return function mockSpawnKane(opts, done) {
+    calls.push(opts.args.slice());
+    if (opts.args[0] === 'testmd') {
+      testmdCalls += 1;
+      if (testmdCalls === 1) {
+        done({ exitCode: 1, stdout: analyzerTestmd('live-replay-an-1'), stderr: '', durationMs: 23000, timedOut: false });
+      } else {
+        done({ exitCode: 0, stdout: greenTestmd('live-replay-' + testmdCalls), stderr: '', durationMs: 18000, timedOut: false });
+      }
+      return;
+    }
+    done({ exitCode: 0, stdout: greenSweep('live-sweep-1'), stderr: '', durationMs: 50000, timedOut: false });
+  };
+}
+
+check('analyzer failure on the first replay re-spawns once and still reaches LOOP_VERIFIED', () => {
+  const dir = freshRoot();
+  const journal = path.join(dir, 'journal.jsonl');
+  const gate = createGate({ objectiveHash: 'o1-loopmart-checkout', testFileHash: null });
+  const calls = [];
+  let result = null;
+  runLiveGate({
+    gate: gate, journalPath: journal, root: dir, url: 'http://localhost:8080',
+    preflight: mockPreflight, liveChecks: mockLiveChecksOk,
+    spawnKane: scriptedSpawnKaneAnalyzerFirst(calls),
+  }, (r) => { result = r; });
+  assert.ok(result, 'done() must be called');
+  assert.equal(result.state, 'LOOP_VERIFIED', 'one analyzer failure must not stop the loop');
+  assert.equal(result.capped, undefined, 'must not hit the spawn cap');
+  assert.equal(calls.length, 3, 'exactly 3 Kane spawns: analyzer-failed replay + green replay + sweep');
+  assert.deepEqual(calls.map((c) => c[0]), ['testmd', 'testmd', 'run']);
+  const lines = fs.readFileSync(journal, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  assert.equal(lines.length, 3, 'three journal lines: analyzer failure, replay pass, sweep pass');
+  assert.equal(lines[0].classifier, 'DIDNT_START');
+  assert.equal(lines[0].decision, 'replay');
+  assert.equal(lines[1].pass_kind, 'replay');
+  assert.equal(lines[2].pass_kind, 'sweep');
+  assert.equal(lines[2].verdict, 'LOOP_VERIFIED');
+  assert.ok(gate.replayPass && gate.independentPass, 'gate holds both passes');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

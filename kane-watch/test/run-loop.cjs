@@ -26,8 +26,8 @@ function check(name, fn) {
 const ROOT = path.join(__dirname, '..', '..');
 
 check('buildKaneArgs builds the real replay + sweep commands (zero code change when auth lands)', () => {
-  const replay = buildKaneArgs({ command: 'testmd', testFile: '.testmuai/tests/loopmart-o1-core-6_test.md', url: 'http://localhost:8080' });
-  assert.deepEqual(replay, ['testmd', 'run', '.testmuai/tests/loopmart-o1-core-6_test.md', '--agent', '--headless', '--no-adaptive-heal', '--bug-detection', 'continue', '--timeout', '300']);
+  const replay = buildKaneArgs({ command: 'testmd', testFile: '.testmuai/tests/loopmart-o1-core-8_test.md', url: 'http://localhost:8080' });
+  assert.deepEqual(replay, ['testmd', 'run', '.testmuai/tests/loopmart-o1-core-8_test.md', '--agent', '--headless', '--no-adaptive-heal', '--bug-detection', 'continue', '--timeout', '300']);
   const sweep = buildKaneArgs({ command: 'run', objective: 'Go to http://localhost:8080 ...', url: 'http://localhost:8080' });
   assert.ok(sweep.includes('--bug-detection') && sweep.includes('continue'));
   assert.ok(sweep.includes('--agent') && sweep.includes('--headless'));
@@ -57,7 +57,7 @@ check('dry-run closes the loop end-to-end: fail -> patch -> green (LOOP_VERIFIED
   assert.ok(lines[2].git_sha_before && lines[2].git_sha_after, 'fix line records content hashes');
   // The replay pass records the test-file hash so a judge can audit it.
   const crypto = require('node:crypto');
-  const expectedHash = crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, '.testmuai', 'tests', 'loopmart-o1-core-6_test.md'))).digest('hex').slice(0, 16); // sha256File slices to 16
+  const expectedHash = crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, '.testmuai', 'tests', 'loopmart-o1-core-8_test.md'))).digest('hex').slice(0, 16); // sha256File slices to 16
   assert.equal(lines[3].test_file_hash, expectedHash, 'replay pass records the real _test.md hash (Wave 4 fix: the objective file is no longer what Kane runs)');
   assert.notEqual(lines[4].inputs, lines[3].inputs, 'sweep inputs differ from replay inputs');
   // Evidence hygiene (15 Nov): the red lines record the PARSED fixture

@@ -7,7 +7,12 @@
  * Builds on src/parse-ndjson.js (Day 1, 9 fixtures passing).
  *
  * Routing (never infer pass from absence of failure):
- *   DIDNT_START      -> setup fix only, never to the coder, no attempt.
+ *   DIDNT_START      -> setup fix only, never to the coder, no attempt —
+ *                       EXCEPT an analyzer failure (16 Nov 2026): a
+ *                       DIDNT_START *with* a terminal event and no
+ *                       upload/evidence/seal reason is a Kane-side
+ *                       flake — one bounded replay, the second
+ *                       consecutive one -> human (see isAnalyzerFlake).
  *   FLAKE_OR_TIMEOUT -> one zero-credit replay, no code change; a second
  *                       consecutive flake on the same signature -> human.
  *   TEST_BUG         -> fix the _test.md/objective only, counted separately.
@@ -39,6 +44,12 @@ const MAX_ATTEMPTS_PER_SIGNATURE = 3;
 const MAX_ATTEMPTS_PER_CLAIM = 5;
 const MAX_REPLAYS_WITHOUT_FIX = 2;
 
+// The fixer may touch exactly these files (Wave 5, B14c): the old
+// validateFix only checked the `loopmart/` prefix, so loopmart/server.cjs
+// would have passed. Single source of truth — fixer.js imports this
+// list from here (fixer already requires this module; no cycle).
+const ALLOW_LISTED_FILES = ['loopmart/cart.js', 'loopmart/app.js'];
+
 function normaliseStep(step) {
   return String(step || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -54,6 +65,24 @@ function isAppBug(parsed) {
 }
 
 /**
+ * Analyzer failure (16 Nov 2026, -6 replay, 5x): the terminal event
+ * ARRIVED (test_md_done, overall_status failed) but carried no verdict
+ * and no failing step — the browser test ran (18 actions executed), and
+ * Kane's analyzer failed to read a value (real shape: run_end reason
+ * "analyzer_failed: @ step 18", no step event with a `step` field).
+ * That is a Kane-side flake, not a failure to start: one bounded replay,
+ * the second consecutive one blocks. A DIDNT_START with NO terminal
+ * event (exit 2, truncated stream) or an upload/evidence/seal reason
+ * (nothing verifiable ran) is NOT this — it stays 'setup'.
+ */
+function isAnalyzerFlake(parsed) {
+  if (!parsed.terminalEvent) return false;
+  const reasonText = String(parsed.reason || '').toLowerCase();
+  if (reasonText.includes('upload') || reasonText.includes('evidence') || reasonText.includes('seal')) return false;
+  return true;
+}
+
+/**
  * Decide the routing for one parsed run. Pure function of the parse
  * result + gate state (pendingReds, attempt counts).
  * Returns { action, consumeAttempt, reason } where action is one of:
@@ -62,7 +91,18 @@ function isAppBug(parsed) {
 function routeRun(parsed, gate) {
   const c = parsed.classification;
   if (c === 'PASS') return { action: 'none', consumeAttempt: false, reason: 'pass' };
-  if (c === 'DIDNT_START') return { action: 'setup', consumeAttempt: false, reason: 'run did not start' };
+  if (c === 'DIDNT_START') {
+    if (isAnalyzerFlake(parsed)) {
+      if (gate.flakeCountFor(parsed) >= 1) {
+        return { action: 'human-blocked', consumeAttempt: false, reason: 'second consecutive analyzer failure' };
+      }
+      if (gate.replaysSinceFix >= MAX_REPLAYS_WITHOUT_FIX) {
+        return { action: 'human-blocked', consumeAttempt: false, reason: 'replay cap 2 reached without a fix' };
+      }
+      return { action: 'replay', consumeAttempt: false, reason: 'analyzer failure after a terminal event: replay once, no code change' };
+    }
+    return { action: 'setup', consumeAttempt: false, reason: 'run did not start' };
+  }
   if (c === 'FLAKE_OR_TIMEOUT') {
     if (gate.flakeCountFor(parsed) >= 1) {
       return { action: 'human-blocked', consumeAttempt: false, reason: 'second consecutive flake' };
@@ -124,7 +164,7 @@ function validateFix(diff) {
   let totalLines = 0;
   for (const f of diff) {
     totalLines += (f.added || 0) + (f.removed || 0);
-    if (!/^loopmart\//.test(f.path)) violations.push('outside allow-list: ' + f.path);
+    if (!ALLOW_LISTED_FILES.includes(f.path)) violations.push('file not on the allow-list: ' + f.path + ' (allow-list: ' + ALLOW_LISTED_FILES.join(', ') + ')');
     if (/_test\.md$/.test(f.path)) violations.push('test file edited: ' + f.path);
     if (/\bkane-watch\//.test(f.path)) violations.push('watcher edited: ' + f.path);
     if (f.deleted) violations.push('file deleted: ' + f.path + ' — file deletions are not allowed');
@@ -282,7 +322,8 @@ function createGate(opts) {
       const decision = routeRun(parsed, this);
       const sig = signatureFor(this.objectiveHash,
         parsed.failingStep && parsed.failingStep.step);
-      if (parsed.classification === 'FLAKE_OR_TIMEOUT') {
+      if (parsed.classification === 'FLAKE_OR_TIMEOUT'
+        || (parsed.classification === 'DIDNT_START' && isAnalyzerFlake(parsed))) {
         this.flakeSignatures.set(sig, (this.flakeSignatures.get(sig) || 0) + 1);
       }
       if (parsed.classification === 'INCONCLUSIVE') {
@@ -370,6 +411,7 @@ module.exports = {
   MAX_ATTEMPTS_PER_SIGNATURE: MAX_ATTEMPTS_PER_SIGNATURE,
   MAX_ATTEMPTS_PER_CLAIM: MAX_ATTEMPTS_PER_CLAIM,
   MAX_REPLAYS_WITHOUT_FIX: MAX_REPLAYS_WITHOUT_FIX,
+  ALLOW_LISTED_FILES: ALLOW_LISTED_FILES,
   signatureFor: signatureFor,
   normaliseStep: normaliseStep,
   isAppBug: isAppBug,

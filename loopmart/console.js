@@ -2,12 +2,14 @@
  *
  * The console shows the LoopMart checkout (left, in an iframe) and the
  * loop state (right). Run data comes from console-data-live.json (the
- * real 15 Nov 2026 live Kane runs — latest first, with test_url links
- * and measured credits), falling back to console-data.json, which the
- * dry-run loop regenerates as EXAMPLE data (`npm test` rewrites it —
- * that is by design, and a test pins it; never put live data there).
- * Nothing here presents synthetic output as a live Kane run: the replay
- * leg is unproven (4 Kane-side analyzer failures) and the console says so.
+ * real 15–16 Nov 2026 live Kane runs — 20 runs, LOOP_VERIFIED 16 Nov,
+ * latest first, with test_url links and measured credits), falling back
+ * to console-data.json, which the dry-run loop regenerates as EXAMPLE
+ * data (`npm test` rewrites it — that is by design, and a test pins it;
+ * never put live data there). Nothing here presents synthetic output as
+ * a live Kane run: the replay leg is proven on the -8 test (100, 16 Nov)
+ * and the console says so — the -6 file still fails Kane's analyzer at
+ * step 18 (5x, Kane-side) and the console says that too.
  *
  * Break it (console header): arms the seeded bug in the checkout, fills
  * Mug + Hoodie + KANE10, double-clicks Pay, and reproduces the scenario
@@ -20,10 +22,11 @@
  * of loopmart/cart.js if the wording looks inconsistent with an old
  * screenshot.)
  *
- * Replay last failure: re-runs the local scenario against the CURRENT
- * code (the mode is whatever the checkout is in — buggy after Break it,
- * fixed after Reset), labelled DRY-RUN. It never starts a fresh
- * LLM-authored run.
+ * Re-run the double-charge scenario locally: re-runs the local scenario
+ * against the CURRENT code (the mode is whatever the checkout is in —
+ * buggy after Break it, fixed after Reset), labelled DRY-RUN. It never
+ * starts a fresh LLM-authored run, and it never replays a Kane-side
+ * analyzer failure — there is nothing local that can reproduce one.
  */
 (function () {
   'use strict';
@@ -59,6 +62,9 @@
   function fallbackData() {
     return {
       generated: null, mode: 'dry-run', verdict: 'EXAMPLE',
+      verdictLine: 'EXAMPLE — seeded example run (no live Kane runs yet).',
+      verdictCaveat: 'Press Break it to reproduce the double-charge locally; a live gate run writes LOOP_VERIFIED here.',
+      bannerNote: 'EXAMPLE — no live Kane runs yet. This console shows a seeded example run; press Break it to reproduce the double-charge locally.',
       credits: { spent: 0, balance: null, note: '0 credits — no live runs yet. Balance unknown — kane-cli balance not run.' },
       exampleRun: {
         run_id: 'EXAMPLE-001', trigger: 'seeded example', verdict: 'EXAMPLE',
@@ -90,6 +96,10 @@
     var verdict = run.verdict || 'EXAMPLE';
     var exit = run.exitCode === null || run.exitCode === undefined ? '' : ' — exit ' + run.exitCode;
     var html = '<p class="verdict">' + esc(verdict) + esc(exit) + '</p>';
+    // One canonical verdict line across strip / banner / detail card
+    // (Wave 5, B8): the gate's overall verdict, identical in all three
+    // places, so a judge never sees two different verdicts.
+    if (data && data.verdictLine) html += '<p><span class="label">Gate verdict:</span> ' + esc(data.verdictLine) + '</p>';
     html += '<p><span class="label">Failing step:</span> ' + esc(run.failingStepLabel || run.failingStep || '—') + '</p>';
     if (run.remark) html += '<blockquote>' + esc(run.remark) + '</blockquote>';
     if (run.note) html += '<p>' + esc(run.note) + '</p>';
@@ -118,7 +128,7 @@
     var rows = localRuns.slice();
     if (data && data.runs) rows = rows.concat(data.runs);
     if (data && data.exampleRun) rows.push(data.exampleRun);
-    return rows.slice(0, 12); // 11 live runs + the example row (was 10 — the 11th run cut the first live run off the timeline)
+    return rows.slice(0, 20); // all 20 live runs (was 12 — the slice cut the first 8 live runs off the timeline)
   }
 
   // Pass/fail badge for a timeline row (Wave 4 fix): a failed latest run
@@ -181,10 +191,13 @@
     }
     if (failed) {
       replayBtn.disabled = false;
-      replayBtn.textContent = 'Replay last failure — local reproduction, no Kane run';
+      // Wave 5, B8: the old label ("Replay last failure") promised a
+      // replay of a Kane-side analyzer failure it cannot reproduce —
+      // the button re-runs the seeded double-charge scenario locally.
+      replayBtn.textContent = 'Re-run the double-charge scenario locally';
     } else {
       replayBtn.disabled = true;
-      replayBtn.textContent = 'No failed run to replay yet';
+      replayBtn.textContent = 'No double-charge scenario to re-run yet';
     }
   }
 
@@ -259,8 +272,8 @@
   function onReplay() {
     if (!frameApp()) return;
     replayBtn.disabled = true;
-    setStrip('WORKING — replaying the last failure locally (no Kane run)…', 'DRY-RUN replay — local reproduction only.');
-    // Replay against the CURRENT code: reset the cart (mode unchanged),
+    setStrip('WORKING — re-running the double-charge scenario locally (no Kane run)…', 'DRY-RUN re-run — local reproduction only.');
+    // Re-run against the CURRENT code: reset the cart (mode unchanged),
     // then the same clicks. Buggy mode fails again; fixed mode passes.
     var app = frameApp();
     app.LM.reset(app.state);
@@ -275,11 +288,11 @@
       var result = readLocalResult();
       var failed = result.orders > 1;
       var run = {
-        run_id: localRunId('LOCAL-REPLAY'), trigger: 'Replay last failure', kind: 'DRY-RUN',
+        run_id: localRunId('LOCAL-REPLAY'), trigger: 'Double-charge scenario (local re-run)', kind: 'DRY-RUN',
         verdict: 'DRY-RUN', exitCode: null,
         failingStepLabel: failed ? 'the ledger check failed' : 'All checks passed',
         remark: result.remark,
-        note: 'DRY-RUN replay — local reproduction, not a live Kane run. Mode: ' + (app.state.mode === 'buggy' ? 'buggy (seeded bug armed)' : 'fixed') + '.',
+        note: 'DRY-RUN re-run — local reproduction, not a live Kane run. Mode: ' + (app.state.mode === 'buggy' ? 'buggy (seeded bug armed)' : 'fixed') + '.',
         fixDiff: data ? data.fixDiff : [],
         beforeAfter: failed
           ? 'Before fix: ' + result.orders + ' orders, stock −2 each. After fix (dry-run): 1 order, stock −1 each.'
@@ -288,8 +301,8 @@
       localRuns.unshift(run);
       if (failed) lastFailed = run;
       setStrip(failed
-        ? 'DRY-RUN — local replay: the ledger check failed (' + result.orders + ' orders for one checkout).'
-        : 'DRY-RUN — local replay: all checks passed (1 order, stock −1 each).',
+        ? 'DRY-RUN — local re-run: the ledger check failed (' + result.orders + ' orders for one checkout).'
+        : 'DRY-RUN — local re-run: all checks passed (1 order, stock −1 each).',
         'No Kane run — local reproduction only.');
       renderCard(run);
       updateReplayButton();
@@ -300,25 +313,45 @@
   function init(d) {
     data = d;
     if (d.credits && d.credits.note) creditsLine.textContent = d.credits.note;
+    // The dry-run file carries no bannerNote: in any non-live mode the
+    // banner must read EXAMPLE, never the baked LIVE copy (Wave 5, B8).
+    if (d.mode !== 'live' && !d.bannerNote) {
+      d.bannerNote = 'EXAMPLE — no live Kane runs yet. This console shows a seeded example run; press Break it to reproduce the double-charge locally.';
+    }
     var ndjsonLabel = document.getElementById('ndjson-label');
     if (d.liveRunEnd) {
       ndjsonBody.textContent = JSON.stringify(d.liveRunEnd, null, 2);
       // Wave 4 fix: the old label cited evidence/o2-green-2026-11-15.ndjson,
       // which is gitignored and NOT deployed — it 404s live. Cite the real
       // LambdaTest Test Manager URL from the live data instead.
+      // Wave 5, B8: the live run_end is the 16 Nov O2 gate sweep, and the
+      // label now says what the JSON is (one run_end, not the full log).
       if (ndjsonLabel) {
         var testUrl = d.liveRunEnd.test_url;
-        ndjsonLabel.innerHTML = 'LIVE run_end — O2 green sweep, 15 Nov 2026 (result_code 100). Full run: '
+        ndjsonLabel.innerHTML = 'LIVE run_end JSON (single run) — O2 green sweep, 16 Nov 2026 (result_code 100). Full run: '
           + (testUrl ? '<a href="' + esc(testUrl) + '">Test Manager — O2 green sweep</a>' : 'no test_url emitted')
           + '. The raw NDJSON lives in evidence/ locally (not deployed).';
       }
     } else {
       ndjsonBody.textContent = JSON.stringify(FIXTURE_RUN_END, null, 2);
     }
+    var testFilesEl = document.getElementById('test-files');
+    if (testFilesEl) {
+      if (d.testFiles) {
+        var parts = [];
+        Object.keys(d.testFiles).forEach(function (name) {
+          var f = d.testFiles[name];
+          parts.push(name + ' — md5 ' + f.md5 + ', sha256 ' + f.sha256.slice(0, 16) + '… (' + f.note + ')');
+        });
+        testFilesEl.textContent = 'Replay test files: ' + parts.join(' · ') + ' The hash is content-only and filename-blind.';
+      } else {
+        testFilesEl.textContent = 'No live replay files yet — the -6/-8 hashes appear here once live runs exist.';
+      }
+    }
     var rows = allRuns();
     if (rows.length) renderCard(normalise(rows[0]));
     else renderCard(d.exampleRun);
-    setStrip(d.verdict || 'Loop Console', d.replayNote || '');
+    setStrip(d.verdictLine || d.verdict || 'Loop Console', d.verdictCaveat || d.replayNote || '');
     updateReplayButton();
   }
 
